@@ -7,6 +7,7 @@ import traceback
 import numpy as np
 import pandas as pd
 from sqlalchemy import create_engine
+from sqlalchemy.types import DateTime, VARCHAR, FLOAT
 from configparser import ConfigParser
 from datetime import datetime, timedelta
 from tools import get_point_mapping, get_file_data, get_all_columns, DataMissing
@@ -123,7 +124,7 @@ class DataFormat:
             df = df.melt(id_vars=self.id_var, var_name=self.var_name)
             return df
         else:
-            raise DataMissing("数据遗漏")
+            raise DataMissing("数据遗漏, 当前文件：{}".format(file))
 
     def get_data(self):
         """获取数据内容，错那、岗巴会获取到单个文件内容整理成一个dataframe，天津数据会将该日所有机组的数据文件整合成一个dataframe，缺失项设置为NAN
@@ -218,7 +219,17 @@ class DataFormat:
         """
         # 存入数据库，追加
         if items is not None:
-            items.to_sql(name=self.table_name, con=conn, if_exists='append', index=False)
+            items.to_sql(
+                name=self.table_name,
+                con=conn,
+                if_exists='append',
+                index=False,
+                dtype={
+                    "time": DateTime,
+                    "pointname": VARCHAR(length=30),
+                    "value": FLOAT
+                }
+            )
             logging.info("完成所有数据上传")
             return True
 
@@ -303,8 +314,9 @@ class DataFormat:
             if not success.strip():
                 items = self.get_data()
                 if self.insert_to_sql(items, engine):
-                    self.table_backup()
-                    self.clear_backup()
+                    self.table_backup() # 备份
+                    self.clear_backup() # 清除备份
+                    self.file_clear()   # 清除数据文件
             else:
                 logging.info(
                     "===============     End {} 操作已取消 {}     ===============\n".format(
@@ -352,8 +364,7 @@ if __name__ == '__main__':
         "3": os.path.join(base_path, "conf_tianjin.ini"),
     }
 
-    DataFormat(conf[choose.strip()]).file_clear()
-    # DataFormat(conf[choose.strip()]).run()
+    DataFormat(conf[choose.strip()]).run()
 
 
 
