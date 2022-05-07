@@ -3,6 +3,7 @@
 # @Time    : 2022/4/25 17:21
 # @Author  : MAYA
 
+from functools import wraps
 
 import json
 import logging
@@ -218,6 +219,7 @@ def resample_data_by_days(df, just_date=False, hours_op_dic=None, days_op_dic=No
             df = df.mean()
     else:
         df = resample_data_by_hours(df, hours_op_dic)
+        df = df.resample("D")
         if days_op_dic:
             df = df.agg(days_op_dic)
         else:
@@ -388,7 +390,117 @@ select * from {} WHERE pointname in ('f3_WSHP004_F','f2_WSHP003_HHWLT','f3_WSHP0
 
 ) and (time between '{}' and '{}')
 """,
-    # ""
+    "WATER_SUPPLY_RETURN_TEMPERATURE_SQL": """select * from {} WHERE pointname in ('f3_HHWLoop001_ST','f2_HHWLoop001_ST',
+'f5_HHWLoop001_RFlow','f3_HHWLoop002_RT','f3_HHWLoop002_RFlow','f5_HHWLoop001_RT',
+'f5_HHWLoop001_ST','f4_HHWLoop001_ST','f5_HHWLoop001_RT','f3_HHWLoop003_RFlow','f3_HHWLoop002_ST','f2_HHWLoop001_RT',
+'f3_HHWLoop001_RT','f4_HHWLoop001_RT','f2_HHWLoop001_RFlow','f3_HHWLoop001_RFlow','f3_HHWLoop003_RT','f4_HHWLoop001_F',
+'f3_HHWLoop003_ST') and (time between '{}' and '{}')
+""",
+    "API_HEAT_PROVIDE_TEMPERATURE_SQL": """select * from {} WHERE pointname in ('f2_HW_F', 'f2_LW_F', 'f2_HW_T', 
+'f2_LW_T', 'f3_HW_F', 'f3_LW_F', 'f3_HW_T', 'f3_LW_T', 'f4_HW_F', 'f4_LW_F', 'f4_HW_T', 'f4_LW_T', 'f5_HW_F', 'f5_LW_F',
+'f5_HW_T', 'f5_LW_T', 'fj_SEP_T',
+ 
+'f2_HHWLoop001_RFlow', 'f2_HHWLoop001_RT',
+'f2_HHWLoop001_ST', 'f3_HHWLoop001_RFlow', 'f3_HHWLoop002_RFlow', 'f3_HHWLoop003_RFlow', 'f3_HHWLoop001_RT', 
+'f3_HHWLoop002_RT', 'f3_HHWLoop003_RT', 'f3_HHWLoop001_ST', 'f3_HHWLoop002_ST', 'f3_HHWLoop003_ST', 'f4_HHWLoop001_F',
+'f4_HHWLoop001_RT', 'f4_HHWLoop001_ST', 'f5_HHWLoop001_RFlow', 'f5_HHWLoop001_RT', 'f5_HHWLoop001_ST',
 
+'f2_WSHP001_HHWET', 'f2_WSHP002_HHWET', 'f2_WSHP003_HHWET', 'f2_WSHP004_HHWET', 'f2_WSHP001_HHWLT', 'f2_WSHP002_HHWLT',
+'f2_WSHP003_HHWLT', 'f2_WSHP004_HHWLT', 'f3_WSHP001_F', 'f3_WSHP002_F', 'f3_WSHP003_F', 'f3_WSHP004_F', 'f3_WSHP005_F',
+'f3_WSHP006_F', 'f3_WSHP001_HHWET', 'f3_WSHP002_HHWET', 'f3_WSHP003_HHWET', 'f3_WSHP004_HHWET', 'f3_WSHP005_HHWET', 
+'f3_WSHP006_HHWET', 'f3_WSHP001_HHWLT', 'f3_WSHP002_HHWLT', 'f3_WSHP003_HHWLT', 'f3_WSHP004_HHWLT', 
+'f3_WSHP005_HHWLT', 'f3_WSHP006_HHWLT','f4_WSHP001_F', 'f4_WSHP002_F', 'f4_WSHP003_F', 'f4_WSHP004_F', 
+'f4_WSHP001_HHWET', 'f4_WSHP002_HHWET', 'f4_WSHP003_HHWLT','f4_WSHP003_HHWET', 'f4_WSHP004_HHWET', 'f4_WSHP001_HHWLT',
+'f4_WSHP002_HHWLT', 'f4_WSHP004_HHWLT', 'f2_WSHP001_F', 'f5_WSHP001_F', 'f5_WSHP002_F', 'f5_WSHP003_F', 
+'f2_WSHP002_F', 'f5_WSHP001_HHWET', 'f5_WSHP002_HHWET', 'f5_WSHP003_HHWET', 'f5_WSHP001_HHWLT', 'f5_WSHP002_HHWLT', 
+'f5_WSHP003_HHWLT', 'f2_WSHP003_F', 'f2_WSHP004_F',
+
+'f3_HHWLoop001_RFlow',
+'f3_HHWLoop002_RFlow','f3_HHWLoop003_RFlow','f3_HHWLoop_BypassFlow','f3_WSHP001_F','f3_WSHP002_F','f3_WSHP003_F',
+'f3_WSHP004_F','f3_WSHP005_F','f3_WSHP006_F','f3_HHX_SRT','f3_CL003_T','f4_HHWLoop001_F','f4_HHWLoop_BypassFlow',
+'f4_WSHP001_F','f4_WSHP002_F','f4_WSHP003_F','f4_WSHP004_F','f4_HHX_SRT','f4_CL003_T','f5_HHWLoop001_RFlow',
+'f5_HHWLoop_BypassFlow','f5_WSHP001_F','f5_WSHP002_F','f5_WSHP003_F','f5_HHX_SRT','f5_CL003_T'
+) and (time between '{}' and '{}')
+""",
+    "WATER_REPLENISHMENT_SQL": """select * from {} WHERE pointname in ('f2_HHWLoop001_RFlow','f3_HHWLoop001_RFlow',
+'f3_HHWLoop002_RFlow','f3_HHWLoop003_RFlow','f4_HHWLoop001_F','f5_HHWLoop001_RFlow','f2_HHWLoop001_RFlow',
+'f3_HHWLoop001_RFlow','f3_HHWLoop002_RFlow','f3_HHWLoop003_RFlow','f4_HHWLoop001_F','f5_HHWLoop001_RFlow'
+) and (time between '{}' and '{}')
+ """,
+    "COMPREHENSIVE_COP_SQL": """select * from {} WHERE pointname in ('f2_HHWLoop001_RFlow','f2_HHWLoop001_ST',
+'f2_HHWLoop001_RT','f3_meter01_KW','f3_meter02_KW','f3_meter03_KW','f3_meter04_KW','f3_meter05_KW','f3_meter06_KW',
+'f3_meter07_KW','f3_meter08_KW','f2_WSHP001_F','f2_WSHP001_HHWLT','f2_WSHP001_HHWET','f2_WSHP002_F','f2_WSHP002_HHWLT',
+'f2_WSHP002_HHWET','f2_WSHP003_F','f2_WSHP003_HHWLT','f2_WSHP003_HHWET','f2_WSHP004_F','f2_WSHP004_HHWLT',
+'f2_WSHP004_HHWET', 'f3_HHWLoop001_RFlow','f3_HHWLoop001_ST','f3_HHWLoop001_RT','f3_HHWLoop002_RFlow',
+'f3_HHWLoop002_ST','f3_HHWLoop002_RT','f3_HHWLoop003_RFlow','f3_HHWLoop003_ST','f3_HHWLoop003_RT','f2_meter01_KW',
+'f2_meter02_KW','f2_meter03_KW','f2_meter04_KW','f2_meter05_KW','f2_meter06_KW','f3_WSHP001_F','f3_WSHP001_HHWLT',
+'f3_WSHP001_HHWET','f3_WSHP002_F','f3_WSHP002_HHWLT','f3_WSHP002_HHWET','f3_WSHP003_F','f3_WSHP003_HHWLT',
+'f3_WSHP003_HHWET','f3_WSHP004_F','f3_WSHP004_HHWLT','f3_WSHP004_HHWET','f3_WSHP005_F','f3_WSHP005_HHWLT',
+'f3_WSHP005_HHWET','f3_WSHP006_F','f3_WSHP006_HHWLT','f3_WSHP006_HHWET', 'f4_HHWLoop001_F','f4_HHWLoop001_ST',
+'f4_HHWLoop001_RT','KW_LC','f4_meter01_KW','f4_meter02_KW','f4_meter03_KW','f4_meter04_KW','f4_meter05_KW',
+'f4_meter06_KW','f4_meter07_KW','f4_WSHP001_F','f4_WSHP001_HHWLT','f4_WSHP001_HHWET','f4_WSHP002_F','f4_WSHP002_HHWLT',
+'f4_WSHP002_HHWET','f4_WSHP003_F','f4_WSHP003_HHWLT','f4_WSHP003_HHWET','f4_WSHP004_F','f4_WSHP004_HHWLT',
+'f4_WSHP004_HHWET', 'f5_HHWLoop001_RFlow','f5_HHWLoop001_ST','f5_HHWLoop001_RT','f5_meter01_KW', 'f5_meter02_KW',
+'f5_meter03_KW','f5_meter04_KW','f5_meter05_KW','f5_meter06_KW','f5_WSHP001_F','f5_WSHP001_HHWLT','f5_WSHP001_HHWET',
+'f5_WSHP002_F','f5_WSHP002_HHWLT','f5_WSHP002_HHWET','f5_WSHP003_F','f5_WSHP003_HHWLT','f5_WSHP003_HHWET') and 
+(time between '{}' and '{}')
+""",
+    "WATER_HEAT_PUMP_COP_SQL": """select * from {} WHERE pointname in ('f2_WSHP001_F','f2_WSHP001_HHWLT',
+'f2_WSHP001_HHWET','f2_WSHP002_F','f2_WSHP002_HHWLT','f2_WSHP002_HHWET','f2_WSHP003_F','f2_WSHP003_HHWLT',
+'f2_WSHP003_HHWET','f2_WSHP004_F','f2_WSHP004_HHWLT','f2_WSHP004_HHWET','f3_WSHP001_F','f3_WSHP001_HHWLT',
+'f3_WSHP001_HHWET','f3_WSHP002_F','f3_WSHP002_HHWLT','f3_WSHP002_HHWET','f3_WSHP003_F','f3_WSHP003_HHWLT',
+'f3_WSHP003_HHWET','f3_WSHP004_F','f3_WSHP004_HHWLT','f3_WSHP004_HHWET','f3_WSHP005_F','f3_WSHP005_HHWLT',
+'f3_WSHP005_HHWET','f3_WSHP006_F','f3_WSHP006_HHWLT','f3_WSHP006_HHWET','f4_WSHP001_F','f4_WSHP001_HHWLT',
+'f4_WSHP001_HHWET','f4_WSHP002_F','f4_WSHP002_HHWLT','f4_WSHP002_HHWET','f4_WSHP003_F','f4_WSHP003_HHWLT',
+'f4_WSHP003_HHWET','f4_WSHP004_F','f4_WSHP004_HHWLT','f4_WSHP004_HHWET','f5_WSHP001_F','f5_WSHP001_HHWLT',
+'f5_WSHP001_HHWET','f5_WSHP002_F','f5_WSHP002_HHWLT','f5_WSHP002_HHWET','f5_WSHP003_F','f5_WSHP003_HHWLT',
+'f5_WSHP003_HHWET') and (time between '{}' and '{}')
+""",
+    "ROOM_NETWORK_WATER_SUPPLY_TEMPERATURE_SQL": """select * from {} WHERE pointname in ('f2_HHWLoop001_ST',
+'f3_HHWLoop001_ST','f3_HHWLoop002_ST','f3_HHWLoop003_ST','f4_HHWLoop001_ST','f5_HHWLoop001_ST') and
+ (time between '{}' and '{}')
+ """
+}
+
+STORE_SQL = {
+    "cona": "insert into "
+}
+
+DB = {
+    "query": "data_center_original",
+    "store": "data_center_statistical"
+}
+
+TB = {
+    "query": {
+        "cona": "cona",
+        "kamba": "kamba"
+    },
+    "store": {
+        "cona": {
+            "hours": "cona_hours_data",
+            "days": "cona_days_data",
+        },
+        "kamba": {
+            "hours": "kamba_hours_data",
+            "days": "kamba_days_data",
+        }
+    }
 
 }
+
+
+def log_hint(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        print("函数 {} 执行".format(func))
+        # logging.info("函数 {} 执行".format(func))
+        try:
+            res = func(*args, **kwargs)
+            print("函数 {} 执行完成".format(func))
+            # logging.info("函数 {} 执行完成".format(func))
+            return res
+        except Exception as e:
+            print("函数 {} 异常，异常内容：{}".format(func, e))
+            # logging.info("函数 {} 异常，异常内容：{}".format(func, e))
+    return wrapper
