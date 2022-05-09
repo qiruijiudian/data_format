@@ -7,28 +7,136 @@ import pymysql
 import platform
 import pandas as pd
 import logging
-
+import traceback
+import numpy as np
 from sqlalchemy import create_engine
 from sqlalchemy.types import FLOAT, DateTime
-from tools import resample_data_by_hours, resample_data_by_days, SQL_CONTEXT, DB, TB, log_hint
+from tools import resample_data_by_hours, resample_data_by_days, SQL_CONTEXT, DB, TB, log_hint, POINT_DF
+from datetime import datetime
 
-"""错那 统计内容
-1.供水温度与气温关系 TODO
-2. 地热井提供热量
-3. 综合COP
-4. 地热井出水温度（高温）
-５. 节省供暖费用
-6. 供热量与平均温度
-7. 供回水温度
-8. 供热量与气温关系
-9. 负荷量
-10. 补水量
-11. 子页面 综合COP
-12. 子页面 水源热泵COP
-13. 子页面 供水温度与气温
-"""
 
-# **********************************************  错那 统计项目  *********************************************************
+# ************************************************  公共函数  ************************************************************
+
+def check_time(items):
+    """# 检查时间列是否一致
+
+    :param items: 数据集
+    :return: True or False
+    """
+    if not len(items):
+        logging.info("无数据内容")
+    else:
+        hours_time = items[0]["hours_data"]["time_data"]
+        days_time = items[0]["days_data"]["time_data"]
+        for i in range(1, len(items)):
+            if items[i]["hours_data"]["time_data"] != hours_time:
+                logging.info("时 时间列异常")
+                return False, None, None
+
+            if items[i]["days_data"]["time_data"] != days_time:
+                logging.info("日 时间列异常")
+                return False, None, None
+
+        return True, hours_time, days_time
+
+
+def data_collation(block, start, end):
+    res = {
+        "hours_data": {},
+        "days_data": {}
+    }
+    print("{} 数据获取 开始".format(block))
+    if block == "cona":
+        # 错那统计内容
+        # 1. 地热井提供热量
+        # 2. 综合COP
+        # 3. 节省供暖费用
+        # 4. 供回水温度
+        # 5. 供热量
+        # 6. 负荷量
+        # 7. 补水量
+        # 8. 子页面 综合COP
+        # 9. 子页面 水源热泵COP
+        # 10. 子页面 供水温度与气温
+        geothermal_wells_heat_provide = get_cona_geothermal_wells_heat_provide(start, end)
+        com_cop = get_cona_com_cop(start, end)
+        cost_saving = get_cona_cost_saving(start, end)
+        heat_provided = get_cona_heat_provided(start, end)
+        water_supply_return_temperature = get_cona_water_supply_return_temperature(start, end)
+        water_replenishment = get_cona_water_replenishment(start, end)
+        sub_com_cop = get_cona_sub_com_cop(start, end)
+        sub_water_source_cop = get_cona_sub_water_source_cop(start, end)
+        room_network_water_supply_temperature = get_cona_room_network_water_supply_temperature(start, end)
+        items = [
+            geothermal_wells_heat_provide,
+            com_cop,
+            cost_saving,
+            heat_provided,
+            water_supply_return_temperature,
+            water_replenishment,
+            sub_com_cop,
+            sub_water_source_cop,
+            room_network_water_supply_temperature
+        ]
+        success, hours_time, days_time = check_time(items)
+
+        if success:
+
+            for item in items:
+                res["hours_data"].update(item["hours_data"])
+                res["days_data"].update(item["days_data"])
+
+            res["hours_data"]["time_data"] = [
+                datetime(
+                    year=item.year,
+                    month=item.month,
+                    day=item.day,
+                    hour=item.hour
+                ) for item in res["hours_data"]["time_data"]
+            ]
+
+            res["days_data"]["time_data"] = [
+                datetime(
+                    year=item.year,
+                    month=item.month,
+                    day=item.day
+                ) for item in res["days_data"]["time_data"]
+            ]
+            # 获取日平均温度
+            days_temp = get_cona_temp(res["days_data"]["time_data"])
+            res["days_data"]["temp"] = days_temp
+        else:
+            print("数据获取异常")
+            exit()
+    print("{} 数据获取 完成".format(block))
+    return res
+
+
+def get_dtype(columns):
+    res = {}
+    for item in columns:
+        if item == "time_data":
+            res[item] = DateTime
+        else:
+            res[item] = FLOAT
+    return res
+
+
+def update_history_data():
+    context = {
+        "cona": {
+            "start": "2020-12-31 00:00:00",
+            "end": "2021-05-14 23:59:59"
+        },
+        "kamba": {
+            "start": "2020-08-17 00:00:00",
+            "end": "2022-05-09 23:59:59"
+        }
+    }
+    start, end = "2020-12-31 00:00:00", "2021-05-14 23:59:59"
+    for block in ["cona"]:
+        items = data_collation(block, start, end)
+        store_data(block, items)
 
 
 def get_store_conn():
@@ -46,10 +154,15 @@ def get_store_conn():
     )
 
 
-def store_data(block, start, end):
+def store_data(block, items):
+    """数据存储
+
+    :param block: 数据隶属 如：cona、kamba、tianjin
+    :param items: 数据集合
+    """
 
     engine = get_store_conn()
-    hours_data, days_data = data_collation(block, start, end)
+    hours_data, days_data = items["hours_data"], items["days_data"]
 
     try:
         # logging.info("开始 {} - {} 上传".format(block, "时数据"))
@@ -84,8 +197,6 @@ def store_data(block, start, end):
 
     except Exception as e:
         logging.error("数据上传异常")
-        print("数据上传异常")
-        import traceback
         traceback.print_exc()
     finally:
         engine.dispose()
@@ -119,7 +230,7 @@ def get_data(sql_key, start, end, db, tb):
     :param tb: 数据表名称
     :return: dataframe格式的数据内容
     """
-    sql = SQL_CONTEXT[sql_key].format(tb, start, end)
+
     sql_conf = get_sql_conf(db)
     with pymysql.connect(
             host=sql_conf["host"],
@@ -127,11 +238,29 @@ def get_data(sql_key, start, end, db, tb):
             password=sql_conf["password"],
             database=sql_conf["database"]
     ) as conn:
+        if "cona" in tb:
+            sql = SQL_CONTEXT[tb][sql_key].format(tb, start, end)
+            result_df = pd.read_sql(sql, con=conn).pivot(
+                index='time', columns='pointname', values='value'
+            )
+            return result_df.reset_index()
+        elif "kamba" in tb:
+            common_sql = SQL_CONTEXT["COMMON_SQL"]
+            key_lst = SQL_CONTEXT[tb][sql_key]
+            key_lst = [POINT_DF.get(item) for item in key_lst]
+            sql = common_sql.format(tb, str(tuple(key_lst)), start, end)
+            result_df = pd.read_sql(sql, con=conn).pivot(
+                index='Timestamp', columns='pointname', values='value'
+            )
+            result_df.replace(to_replace='.*[u\.].*', value=np.nan, regex=True, inplace=True)
+            return result_df.reset_index(), key_lst
 
-        result_df = pd.read_sql(sql, con=conn).pivot(
-            index='time', columns='pointname', values='value'
-        )
-        return result_df.reset_index()
+
+# **********************************************************************************************************************
+# **********************************************************************************************************************
+
+
+# **********************************************  错那 统计项目  *********************************************************
 
 
 @log_hint
@@ -221,7 +350,7 @@ def get_cona_geothermal_wells_heat_provide(start, end, block="cona"):
                                   'geothermal_wells_high_heat_provide', 'geothermal_wells_low_heat_provide']]
 
     hours_df = resample_data_by_hours(
-        result_df,
+        result_df, "time",
         {
             'high_temp_plate_exchange_heat_production': 'mean',
             'water_heat_pump_heat_production': 'mean',
@@ -230,7 +359,7 @@ def get_cona_geothermal_wells_heat_provide(start, end, block="cona"):
         }
     )
     days_df = resample_data_by_days(
-        result_df,
+        result_df, "time",
         {
             'high_temp_plate_exchange_heat_production': 'mean',
             'water_heat_pump_heat_production': 'mean',
@@ -351,7 +480,7 @@ def get_cona_com_cop(start, end, block="cona"):
                                            result_df['f5_meter06_KW']
     result_df = result_df.loc[:, ['time', 'UR', 'heat_pipe_network_heating', 'machine_room_pump_power']]
     hours_df = resample_data_by_hours(
-        result_df,
+        result_df, "time",
         {
             'UR': 'mean',
             'heat_pipe_network_heating': 'mean',
@@ -359,9 +488,7 @@ def get_cona_com_cop(start, end, block="cona"):
         }
     )
     days_df = resample_data_by_days(
-        result_df,
-        True,
-        None,
+        result_df, "time", True, None,
         {
             'UR': 'mean',
             'heat_pipe_network_heating': 'mean',
@@ -369,11 +496,11 @@ def get_cona_com_cop(start, end, block="cona"):
         }
     )
     hours_cop = hours_df['heat_pipe_network_heating'] / (
-                        hours_df['machine_room_pump_power'] + hours_df['UR']
-                    )
+            hours_df['machine_room_pump_power'] + hours_df['UR']
+    )
     days_cop = days_df['heat_pipe_network_heating'] / (
-                        days_df['machine_room_pump_power'] + days_df['UR']
-                    )
+            days_df['machine_room_pump_power'] + days_df['UR']
+    )
 
     data = {
         "hours_data": {
@@ -478,7 +605,7 @@ def get_cona_cost_saving(start, end, block="cona"):
                                   'water_heat_pump_heat_production']]
 
     hours_df = resample_data_by_hours(
-        result_df,
+        result_df, "time",
         {
             'machine_room_pump_power': 'mean',
             'high_temp_plate_exchange_heat_production': 'mean',
@@ -486,8 +613,7 @@ def get_cona_cost_saving(start, end, block="cona"):
         }
     )
     days_df = resample_data_by_days(
-        result_df,
-        False,
+        result_df, "time", False,
         {
             'machine_room_pump_power': 'mean',
             'high_temp_plate_exchange_heat_production': 'mean',
@@ -644,12 +770,10 @@ def get_cona_heat_provided(start, end, block="cona"):
                                                             result_df['f5_HHX_HL']
 
     result_df = result_df.loc[:, ['time', 'heat_well_heating', 'heat_pipe_network_heating',
-                             'water_heat_pump_heat_production', 'high_temp_plate_exchange_heat_production']]
-
-
+                                  'water_heat_pump_heat_production', 'high_temp_plate_exchange_heat_production']]
 
     hours_df = resample_data_by_hours(
-        result_df,
+        result_df, "time",
         {
             'heat_well_heating': 'mean',
             'heat_pipe_network_heating': 'mean',
@@ -660,20 +784,18 @@ def get_cona_heat_provided(start, end, block="cona"):
     # print(hours_df)
 
     load_hours_df = resample_data_by_hours(
-        result_df,
+        result_df, "time",
         {
             "heat_pipe_network_heating": ["max", "min", "mean"]
         }
     )
     load_days_df = resample_data_by_days(
-        result_df,
-        False,
+        result_df, "time", False,
         {"heat_pipe_network_heating": "mean"},
         {"heat_pipe_network_heating": ["max", "min", "mean"]}
     )
     days_df = resample_data_by_days(
-        result_df,
-        False,
+        result_df, "time", False,
         {
             'heat_well_heating': 'mean',
             'heat_pipe_network_heating': 'mean',
@@ -710,7 +832,6 @@ def get_cona_heat_provided(start, end, block="cona"):
         }
     }
     return data
-
 
 
 @log_hint
@@ -788,10 +909,12 @@ def get_cona_water_supply_return_temperature(start, end, block="cona"):
                 result_df['f3_HHWLoop002_RFlow'] + result_df['f3_HHWLoop003_RFlow'] +
                 result_df['f4_HHWLoop001_F'] + result_df['f5_HHWLoop001_RFlow']
         )
-    result_df = result_df.loc[:, ["time", "water_supply_temperature", "return_water_temperature", "supply_return_water_temp_diff"]]
+    result_df = result_df.loc[:,
+                    ["time", "water_supply_temperature", "return_water_temperature", "supply_return_water_temp_diff"]
+                ]
 
     hours_df = resample_data_by_hours(
-        result_df,
+        result_df, "time",
         {
             "water_supply_temperature": "mean",
             "return_water_temperature": "mean",
@@ -799,9 +922,7 @@ def get_cona_water_supply_return_temperature(start, end, block="cona"):
         }
     )
     days_df = resample_data_by_days(
-        result_df,
-        True,
-        {},
+        result_df, "time", True, {},
         {
             "water_supply_temperature": "mean",
             "return_water_temperature": "mean",
@@ -853,14 +974,14 @@ def get_cona_water_replenishment(start, end, block="cona"):
     result_df = result_df.loc[:, ["time", "water_replenishment", "water_replenishment_limit"]]
 
     hours_df = resample_data_by_hours(
-        result_df,
+        result_df, "time",
         {
             "water_replenishment": "mean",
             "water_replenishment_limit": "mean"
         }
     )
     days_df = resample_data_by_days(
-        result_df, True, {},
+        result_df, "time", True, {},
         {
             "water_replenishment": "mean",
             "water_replenishment_limit": "mean"
@@ -940,8 +1061,8 @@ def get_cona_sub_com_cop(start, end, block="cona"):
             result_df['f4_HHWLoop001_ST'] - result_df['f4_HHWLoop001_RT']
     ) / 3600
     result_df['KW_LC'] = result_df['f4_meter01_KW'] + result_df['f4_meter02_KW'] + \
-        result_df['f4_meter03_KW'] + result_df['f4_meter04_KW'] + result_df['f4_meter05_KW'] + \
-        result_df['f4_meter06_KW'] + result_df['f4_meter07_KW']
+                         result_df['f4_meter03_KW'] + result_df['f4_meter04_KW'] + result_df['f4_meter05_KW'] + \
+                         result_df['f4_meter06_KW'] + result_df['f4_meter07_KW']
     result_df['TC'] = 1000 * 4.17 * (
             result_df['f4_WSHP001_F'] * (result_df['f4_WSHP001_HHWLT'] - result_df['f4_WSHP001_HHWET']) +
             result_df['f4_WSHP002_F'] * (result_df['f4_WSHP002_HHWLT'] - result_df['f4_WSHP002_HHWET']) +
@@ -957,7 +1078,7 @@ def get_cona_sub_com_cop(start, end, block="cona"):
             result_df['f5_HHWLoop001_ST'] - result_df['f5_HHWLoop001_RT']
     ) / 3600
     result_df['LR_LW'] = result_df['f5_meter01_KW'] + result_df['f5_meter02_KW'] + result_df['f5_meter03_KW'] + \
-        result_df['f5_meter04_KW'] + result_df['f5_meter05_KW'] + result_df['f5_meter06_KW']
+                         result_df['f5_meter04_KW'] + result_df['f5_meter05_KW'] + result_df['f5_meter06_KW']
     result_df['TD'] = 1000 * 4.17 * (
             result_df['f5_WSHP001_F'] * (result_df['f5_WSHP001_HHWLT'] - result_df['f5_WSHP001_HHWET']) +
             result_df['f5_WSHP002_F'] * (result_df['f5_WSHP002_HHWLT'] - result_df['f5_WSHP002_HHWET']) +
@@ -969,7 +1090,7 @@ def get_cona_sub_com_cop(start, end, block="cona"):
     result_df = result_df.loc[:, ['time', 'f2_cop', 'f3_cop', 'f4_cop', 'f5_cop']]
 
     hours_df = resample_data_by_hours(
-        result_df,
+        result_df, "time",
         {
             "f2_cop": "mean",
             "f3_cop": "mean",
@@ -978,7 +1099,7 @@ def get_cona_sub_com_cop(start, end, block="cona"):
         }
     )
     days_df = resample_data_by_days(
-        result_df, True, {},
+        result_df, "time", True, {},
         {
             "f2_cop": "mean",
             "f3_cop": "mean",
@@ -1062,7 +1183,7 @@ def get_cona_sub_water_source_cop(start, end, block="cona"):
     result_df = result_df.loc[:, ['time', 'f2_whp_cop', 'f3_whp_cop', 'f4_whp_cop', 'f5_whp_cop']]
 
     hours_df = resample_data_by_hours(
-        result_df,
+        result_df, "time",
         {
             'f2_whp_cop': 'mean',
             'f3_whp_cop': 'mean',
@@ -1071,7 +1192,7 @@ def get_cona_sub_water_source_cop(start, end, block="cona"):
         }
     )
     days_df = resample_data_by_days(
-        result_df, True, {},
+        result_df, "time", True, {},
         {
             'f2_whp_cop': 'mean',
             'f3_whp_cop': 'mean',
@@ -1121,7 +1242,7 @@ def get_cona_room_network_water_supply_temperature(start, end, block="cona"):
                                   'f3_HHWLoop003_ST', 'f4_HHWLoop001_ST', 'f5_HHWLoop001_ST']]
 
     hours_df = resample_data_by_hours(
-        result_df,
+        result_df, "time",
         {
             'f2_HHWLoop001_ST': 'mean',
             'f3_HHWLoop001_ST': 'mean',
@@ -1129,10 +1250,10 @@ def get_cona_room_network_water_supply_temperature(start, end, block="cona"):
             'f3_HHWLoop003_ST': 'mean',
             'f4_HHWLoop001_ST': 'mean',
             'f5_HHWLoop001_ST': 'mean'
-         }
+        }
     )
     days_df = resample_data_by_days(
-        result_df, True, {},
+        result_df, "time", True, {},
         {
             'f2_HHWLoop001_ST': 'mean',
             'f3_HHWLoop001_ST': 'mean',
@@ -1166,96 +1287,626 @@ def get_cona_room_network_water_supply_temperature(start, end, block="cona"):
     return data
 
 
-def check_time(items):
-    """# 检查时间列是否一致
-
-    :param items: 数据集
-    :return: True or False
-    """
-    if not len(items):
-        logging.info("无数据内容")
-    else:
-        hours_time = items[0]["hours_data"]["time_data"]
-        days_time = items[0]["days_data"]["time_data"]
-        for i in range(1, len(items)):
-            if items[i]["hours_data"]["time_data"] != hours_time:
-                logging.info("时 时间列异常")
-                return False, None, None
-
-            if items[i]["days_data"]["time_data"] != days_time:
-                logging.info("日 时间列异常")
-                return False, None, None
-
-        return True, hours_time, days_time
-
-
-def data_collation(block, start, end):
-    if block == "cona":
-        geothermal_wells_heat_provide = get_cona_geothermal_wells_heat_provide(start, end)
-        com_cop = get_cona_com_cop(start, end)
-        cost_saving = get_cona_cost_saving(start, end)
-        heat_provided = get_cona_heat_provided(start, end)
-        water_supply_return_temperature = get_cona_water_supply_return_temperature(start, end)
-        water_replenishment = get_cona_water_replenishment(start, end)
-        sub_com_cop = get_cona_sub_com_cop(start, end)
-        sub_water_source_cop = get_cona_sub_water_source_cop(start, end)
-        room_network_water_supply_temperature = get_cona_room_network_water_supply_temperature(start, end)
-        items = [
-            geothermal_wells_heat_provide,
-            com_cop,
-            cost_saving,
-            heat_provided,
-            water_supply_return_temperature,
-            water_replenishment,
-            sub_com_cop,
-            sub_water_source_cop,
-            room_network_water_supply_temperature
-        ]
-        success, hours_time, days_time = check_time(items)
-        print(success, hours_time, days_time)
-
-        res = {
-            "hours_data": {},
-            "days_data": {}
-        }
-        for item in items:
-            res["hours_data"].update(item["hours_data"])
-            res["days_data"].update(item["days_data"])
-
-        from datetime import datetime
-        res["hours_data"]["time_data"] = [
-            datetime(
-                year=item.year,
-                month=item.month,
-                day=item.day,
-                hour=item.hour
-            ) for item in res["hours_data"]["time_data"]
-        ]
-
-        res["days_data"]["time_data"] = [
-            datetime(
-                year=item.year,
-                month=item.month,
-                day=item.day
-            ) for item in res["days_data"]["time_data"]
-        ]
-
-        hours_df = pd.DataFrame(res["hours_data"])
-
-        days_df = pd.DataFrame(res["days_data"])
-
-        return hours_df, days_df
-
-
-def get_dtype(columns):
-    res = {}
-    for item in columns:
-        if item == "time_data":
-            res[item] = DateTime
-        else:
-            res[item] = FLOAT
+@log_hint
+def get_cona_temp(time_data):
+    """错那 sub 机房水源热泵COP能效
+    :param time_data: datetime类型时间集合
+    :return: 日平均温度列表
+   """
+    sql_conf = get_sql_conf("weather")
+    time_data = [item.strftime("%Y-%m-%d %H:%M:%S") for item in time_data]
+    res = []
+    with pymysql.connect(
+            host=sql_conf["host"],
+            user=sql_conf["user"],
+            password=sql_conf["password"],
+            database=sql_conf["database"]
+    ) as conn:
+        cur = conn.cursor()
+        try:
+            sql = "select temp from cona where time in {}".format(str(tuple(time_data)))
+            cur.execute(sql)
+            res = [item[0] for item in cur.fetchall()]
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print(e)
+        finally:
+            cur.close()
     return res
 
+
+# **********************************************************************************************************************
+# **********************************************************************************************************************
+
+# **********************************************  岗巴 统计项目  *********************************************************
+
+
+def get_kamba_heat_storage_heat(start, end, block="kamba"):
+    """岗巴 蓄热水池可用热量
+    :param block: 隶属 错那数据
+    :param start: 开始时间
+    :param end: 结束时间
+    :return: 包含时数据和日数据的字典
+       time_data: 日期,
+       low_heat_total:  蓄热水池可用低温热量
+       high_heat_total:  蓄热水池可用高温热量
+       heat_supply_days:  电锅炉可替换供热天数
+   """
+    data = {}
+    result_df, point_lst = get_data("ALL_LEVEL_TEMP", start, end, DB["query"], TB["query"][block])
+    volume = ['1031.370428', '1044.176354', '1057.061292', '1070.025243', '1083.068206', '1096.190181',
+              '1109.391169', '1122.671169', '1136.030181', '1149.468206', '1162.985243', '1176.581292',
+              '1190.256354', '1204.010428', '1217.843514', '1231.755613', '1245.746724', '1259.816848',
+              '1273.965984', '1288.194132', '1302.501292', '1316.887465', '1331.35265', '1367.861292',
+              '1382.603021', '1397.423761', '1412.323514', '2024.324037', '2146.595148', '2180.564037',
+              '2214.799593', '2249.301815', '2284.070704', '2319.106259', '2354.408481', '2389.97737',
+              '2425.812926', '2461.915148', '2498.284037', '840.8894115']
+    result_df = result_df.set_index(pd.to_datetime(result_df["Timestamp"]))
+    days_df = result_df.resample('D')
+
+    days_high_heat, days_low_heat, days_time_data, days_low_heat_total, days_high_heat_total = [], [], [], [], []
+    for point_index, point_item in enumerate(point_lst):
+        days_heat_data = days_df[point_item].mean()
+
+        tmp_high, tmp_low = [], []
+        for heat_index in days_heat_data.index:
+            _high_heat = (days_heat_data[heat_index] - 45) * float(volume[point_index]) * 4.186 / 3.6
+            tmp_high.append(_high_heat)
+            tmp_low.append((days_heat_data[heat_index] - 10) * float(volume[point_index]) * 4.186 / 3.6 - _high_heat)
+        days_high_heat.append(tmp_high)
+        days_low_heat.append(tmp_low)
+
+        if not days_time_data:
+            days_time_data = [datetime(year=item.year, month=item.month, day=item.day) for item in days_heat_data.index]
+
+        # print(days_high_heat, len(days_high_heat))
+        # print(days_low_heat, len(days_low_heat))
+
+    for time_index in range(len(days_time_data)):
+        days_low_heat_total.append(sum([item[time_index] for item in days_low_heat]))
+        days_high_heat_total.append(sum([item[time_index] for item in days_high_heat]))
+    days_heat_supply_days = [item / 2000 / 2400 for item in days_high_heat_total]
+
+    data["days_data"] = {
+        "time_data": days_time_data,
+        "low_heat_total": days_low_heat_total,
+        "high_heat_total": days_high_heat_total,
+        "heat_supply_days": days_heat_supply_days
+    }
+
+    hours_df = result_df.resample("h")
+    hours_high_heat, hours_low_heat, hours_time_data, hours_low_heat_total, hours_high_heat_total = [], [], [], [], []
+    for point_index, point_item in enumerate(point_lst):
+        hours_heat_data = hours_df[point_item].mean()
+
+        tmp_high, tmp_low = [], []
+        for heat_index in hours_heat_data.index:
+            _high_heat = (hours_heat_data[heat_index] - 45) * float(volume[point_index]) * 4.186 / 3.6
+            tmp_high.append(_high_heat)
+            tmp_low.append((hours_heat_data[heat_index] - 10) * float(volume[point_index]) * 4.186 / 3.6 - _high_heat)
+        hours_high_heat.append(tmp_high)
+        hours_low_heat.append(tmp_low)
+
+        if not hours_time_data:
+            hours_time_data = [
+                datetime(
+                    year=item.year,
+                    month=item.month,
+                    day=item.day,
+                    hour=item.hour
+                ) for item in hours_heat_data.index
+            ]
+
+    for time_index in range(len(hours_time_data)):
+        hours_low_heat_total.append(sum([item[time_index] for item in hours_low_heat]))
+        hours_high_heat_total.append(sum([item[time_index] for item in hours_high_heat]))
+    hours_heat_supply_days = [item / 2000 / 2400 for item in days_high_heat_total]
+    data["hours_data"] = {
+        "time_data": hours_time_data,
+        "low_heat_total": hours_low_heat_total,
+        "high_heat_total": hours_high_heat_total,
+        "heat_supply_days": hours_heat_supply_days
+    }
+
+    return data
+
+
+def get_kamba_com_cop(start, end, block="kamba"):
+    """岗巴 系统COP
+    :param block: 隶属 错那数据
+    :param start: 开始时间
+    :param end: 结束时间
+    :return: 包含时数据和日数据的字典
+       time_data: 日期,
+       cop:  系统综合cop能效
+    """
+    result_df, point_lst = get_data("COM_COP", start, end, DB["query"], TB["query"][block])
+    result_df['HHWLoop_HeatLoad'] = (result_df[point_lst[0]] - result_df[point_lst[1]]) * 4.186 * (
+            result_df[point_lst[2]] - result_df[point_lst[3]]
+    ) / 3.6
+    tmp_df = result_df.loc[:, [data for data in point_lst[4:]]].sum(axis=1)
+    next_num = tmp_df[0]
+    tmp_df = tmp_df.to_frame(name='SysPower')
+    tmp_df = pd.concat([pd.DataFrame(np.array([next_num]).reshape(1, 1), columns=tmp_df.columns), tmp_df]).diff()[1:]
+    result_df = pd.concat([result_df.loc[:, ["Timestamp", "HHWLoop_HeatLoad"]], tmp_df], axis=1)
+    result_df = result_df.loc[:, ["Timestamp", "HHWLoop_HeatLoad", "SysPower"]]
+    hours_df = resample_data_by_hours(
+        result_df, "Timestamp",
+        {
+            "HHWLoop_HeatLoad": "mean",
+            "SysPower": "sum"
+        }
+    )
+
+    hours_df["cop"] = hours_df["HHWLoop_HeatLoad"] / hours_df["SysPower"]
+    hours_df['cop'][np.isinf(hours_df['cop'])] = np.nan
+
+    days_df = resample_data_by_days(
+        result_df, "Timestamp",
+        True,
+        {},
+        {
+            "HHWLoop_HeatLoad": "mean",
+            "SysPower": "sum"
+        }
+    )
+    days_df["cop"] = days_df["HHWLoop_HeatLoad"] / days_df["SysPower"]
+    days_df['cop'][np.isinf(days_df['cop'])] = np.nan
+
+    data = {
+        "hours_data": {
+            "time_data": [
+                datetime(
+                    year=item.year,
+                    month=item.month,
+                    day=item.day,
+                    hour=item.hour
+                ) for item in hours_df.index
+            ],
+            "cop": hours_df["cop"].values
+        },
+        "days_data": {
+            "time_data": [
+                datetime(
+                    year=item.year,
+                    month=item.month,
+                    day=item.day,
+                    hour=item.hour
+                ) for item in days_df.index
+            ],
+            "cop": days_df["cop"].values
+        }
+    }
+    return data
+
+
+def get_kamba_wshp_cop(start, end, block="kamba"):
+    """岗巴 水源热泵COP
+    :param block: 隶属 错那数据
+    :param start: 开始时间
+    :param end: 结束时间
+    :return: 包含时数据和日数据的字典
+       time_data: 日期,
+       wshp_cop:  水源热泵cop能效
+    """
+    result_df, point_lst = get_data("WSHP_COP", start, end, DB["query"], TB["query"][block])
+
+    result_df['WSHP_HeatLoad'] = 4.186 * (
+            result_df[point_lst[0]] * (result_df[point_lst[1]] - result_df[point_lst[2]]) +
+            result_df[point_lst[3]] * (result_df[point_lst[4]] - result_df[point_lst[5]]) +
+            result_df[point_lst[6]] * (result_df[point_lst[7]] - result_df[point_lst[8]]) +
+            result_df[point_lst[9]] * (result_df[point_lst[10]] - result_df[point_lst[11]]) +
+            result_df[point_lst[12]] * (result_df[point_lst[13]] - result_df[point_lst[14]]) +
+            result_df[point_lst[15]] * (result_df[point_lst[16]] - result_df[point_lst[17]])
+    ) / 3.6
+    tmp_df = result_df.loc[:, [data for data in point_lst[18:]]].sum(axis=1)
+    # TODO 公式为下一行数据减去上一行，未处理首行NNA，暂时用第二行数据替代
+    next_num = tmp_df[0]
+    tmp_df = tmp_df.to_frame(name='WSHP_Power')
+    tmp_df = pd.concat([pd.DataFrame(np.array([next_num]).reshape(1, 1), columns=tmp_df.columns), tmp_df]).diff()[1:]
+    result_df = pd.concat([result_df.loc[:, ['Timestamp', 'WSHP_HeatLoad']], tmp_df], axis=1)
+
+    hours_df = resample_data_by_hours(
+        result_df, "Timestamp",
+        {
+            'WSHP_HeatLoad': 'mean',
+            'WSHP_Power': 'sum'
+        }
+    )
+    hours_df["wshp_cop"] = hours_df["WSHP_HeatLoad"] / hours_df["WSHP_Power"]
+    hours_df['wshp_cop'][np.isinf(hours_df['wshp_cop'])] = np.nan
+
+    days_df = resample_data_by_days(
+        result_df, "Timestamp",
+        True,
+        {},
+        {
+            'WSHP_HeatLoad': 'mean',
+            'WSHP_Power': 'sum'
+        }
+    )
+    days_df["wshp_cop"] = days_df["WSHP_HeatLoad"] / days_df["WSHP_Power"]
+    days_df['wshp_cop'][np.isinf(days_df['wshp_cop'])] = np.nan
+
+    data = {
+        "hours_data": {
+            "time_data": [
+                datetime(
+                    year=item.year,
+                    month=item.month,
+                    day=item.day,
+                    hour=item.hour
+                ) for item in hours_df.index
+            ],
+            "wshp_cop": hours_df["wshp_cop"].values
+        },
+        "days_data": {
+            "time_data": [
+                datetime(
+                    year=item.year,
+                    month=item.month,
+                    day=item.day,
+                    hour=item.hour
+                ) for item in days_df.index
+            ],
+            "wshp_cop": days_df["wshp_cop"].values
+        }
+    }
+    return data
+
+
+def get_kamba_solar_collection(start, end, block="kamba"):
+    """岗巴 太阳能集热量
+    :param block: 隶属 错那数据
+    :param start: 开始时间
+    :param end: 结束时间
+    :return: 包含时数据和日数据的字典
+       time_data: 日期,
+       wshp_cop:  水源热泵cop能效
+    """
+    result_df, point_lst = get_data("SOLAR_COLLECTOR", start, end, DB["query"], TB["query"][block])
+    result_df['solar_collector'] = result_df[point_lst[0]] * 4.186 * (
+            result_df[point_lst[1]] - result_df[point_lst[2]]
+    ) / 3.6
+    result_df = result_df.loc[:, ["Timestamp", "solar_collector"]]
+
+    hours_df = resample_data_by_hours(result_df, "Timestamp", {'solar_collector': 'mean'})
+
+    days_df = resample_data_by_days(result_df, "Timestamp", True, {}, {'solar_collector': 'mean'})
+
+    data = {
+        "hours_data": {
+            "time_data": [
+                datetime(
+                    year=item.year,
+                    month=item.month,
+                    day=item.day,
+                    hour=item.hour
+                ) for item in hours_df.index
+            ],
+            "solar_collector": hours_df["solar_collector"].values
+        },
+        "days_data": {
+            "time_data": [
+                datetime(
+                    year=item.year,
+                    month=item.month,
+                    day=item.day,
+                    hour=item.hour
+                ) for item in days_df.index
+            ],
+            "solar_collector": days_df["solar_collector"].values
+        }
+    }
+    return data
+
+
+def get_kamba_water_replenishment(start, end, block="kamba"):
+    """岗巴 补水量
+    :param block: 隶属 错那数据
+    :param start: 开始时间
+    :param end: 结束时间
+    :return: 包含时数据和日数据的字典
+       time_data: 日期,
+       heat_water_replenishment:  补水量
+       heat_water_replenishment_limit:  补水量限值
+    """
+    result_df, point_lst = get_data("WATER_REPLENISHMENT", start, end, DB["query"], TB["query"][block])
+    result_df['heat_water_replenishment_limit'] = (result_df[point_lst[1]] - result_df[point_lst[2]]) * 0.01
+    result_df.loc[:, point_lst[5]] *= 0.01
+
+    hours_df = resample_data_by_hours(
+        result_df, "Timestamp",
+        {
+            "HHWLoop_MUflow": "mean",
+            "Pit_MU_flow": "mean",
+            "Solar_MUflow": "mean",
+            "SolarRFM_0201": "mean",
+            "heat_water_replenishment_limit": "mean",
+        }
+    )
+
+    days_df = resample_data_by_days(
+        result_df, "Timestamp",
+        True,
+        {},
+        {
+            "HHWLoop_MUflow": "mean",
+            "Pit_MU_flow": "mean",
+            "Solar_MUflow": "mean",
+            "SolarRFM_0201": "mean",
+            "heat_water_replenishment_limit": "mean",
+        }
+    )
+
+    data = {
+        "hours_data": {
+            "time_data": [
+                datetime(
+                    year=item.year,
+                    month=item.month,
+                    day=item.day,
+                    hour=item.hour
+                ) for item in hours_df.index
+            ],
+            "heat_water_replenishment": hours_df[point_lst[0]].values,
+            "heat_water_replenishment_limit": hours_df["heat_water_replenishment_limit"].values
+        },
+        "days_data": {
+            "time_data": [
+                datetime(
+                    year=item.year,
+                    month=item.month,
+                    day=item.day,
+                    hour=item.hour
+                ) for item in days_df.index
+            ],
+            "heat_water_replenishment": days_df[point_lst[0]].values,
+            "heat_water_replenishment_limit": days_df["heat_water_replenishment_limit"].values
+        }
+    }
+    return data
+
+def t(start, end, block="kamba"):
+    result_df, point_lst = get_data("", start, end, DB["query"], TB["query"][block])
+
+    hours_df = resample_data_by_hours(
+        result_df, "Timestamp",
+        {
+            "HHWLoop_HeatLoad": "mean",
+            "SysPower": "sum"
+        }
+    )
+
+
+    days_df = resample_data_by_days(
+        result_df, "Timestamp",
+        True,
+        {},
+        {
+            "HHWLoop_HeatLoad": "mean",
+            "SysPower": "sum"
+        }
+    )
+
+    data = {
+        "hours_data": {
+            "time_data": [
+                datetime(
+                    year=item.year,
+                    month=item.month,
+                    day=item.day,
+                    hour=item.hour
+                ) for item in hours_df.index
+            ],
+            "cop": hours_df["cop"].values
+        },
+        "days_data": {
+            "time_data": [
+                datetime(
+                    year=item.year,
+                    month=item.month,
+                    day=item.day,
+                    hour=item.hour
+                ) for item in days_df.index
+            ],
+            "cop": days_df["cop"].values
+        }
+    }
+    return data
+
+def t(start, end, block="kamba"):
+    result_df, point_lst = get_data("", start, end, DB["query"], TB["query"][block])
+
+    hours_df = resample_data_by_hours(
+        result_df, "Timestamp",
+        {
+            "HHWLoop_HeatLoad": "mean",
+            "SysPower": "sum"
+        }
+    )
+
+
+    days_df = resample_data_by_days(
+        result_df, "Timestamp",
+        True,
+        {},
+        {
+            "HHWLoop_HeatLoad": "mean",
+            "SysPower": "sum"
+        }
+    )
+
+    data = {
+        "hours_data": {
+            "time_data": [
+                datetime(
+                    year=item.year,
+                    month=item.month,
+                    day=item.day,
+                    hour=item.hour
+                ) for item in hours_df.index
+            ],
+            "cop": hours_df["cop"].values
+        },
+        "days_data": {
+            "time_data": [
+                datetime(
+                    year=item.year,
+                    month=item.month,
+                    day=item.day,
+                    hour=item.hour
+                ) for item in days_df.index
+            ],
+            "cop": days_df["cop"].values
+        }
+    }
+    return data
+
+def t(start, end, block="kamba"):
+    result_df, point_lst = get_data("", start, end, DB["query"], TB["query"][block])
+
+    hours_df = resample_data_by_hours(
+        result_df, "Timestamp",
+        {
+            "HHWLoop_HeatLoad": "mean",
+            "SysPower": "sum"
+        }
+    )
+
+
+    days_df = resample_data_by_days(
+        result_df, "Timestamp",
+        True,
+        {},
+        {
+            "HHWLoop_HeatLoad": "mean",
+            "SysPower": "sum"
+        }
+    )
+
+    data = {
+        "hours_data": {
+            "time_data": [
+                datetime(
+                    year=item.year,
+                    month=item.month,
+                    day=item.day,
+                    hour=item.hour
+                ) for item in hours_df.index
+            ],
+            "cop": hours_df["cop"].values
+        },
+        "days_data": {
+            "time_data": [
+                datetime(
+                    year=item.year,
+                    month=item.month,
+                    day=item.day,
+                    hour=item.hour
+                ) for item in days_df.index
+            ],
+            "cop": days_df["cop"].values
+        }
+    }
+    return data
+
+def t(start, end, block="kamba"):
+    result_df, point_lst = get_data("", start, end, DB["query"], TB["query"][block])
+
+    hours_df = resample_data_by_hours(
+        result_df, "Timestamp",
+        {
+            "HHWLoop_HeatLoad": "mean",
+            "SysPower": "sum"
+        }
+    )
+
+
+    days_df = resample_data_by_days(
+        result_df, "Timestamp",
+        True,
+        {},
+        {
+            "HHWLoop_HeatLoad": "mean",
+            "SysPower": "sum"
+        }
+    )
+
+    data = {
+        "hours_data": {
+            "time_data": [
+                datetime(
+                    year=item.year,
+                    month=item.month,
+                    day=item.day,
+                    hour=item.hour
+                ) for item in hours_df.index
+            ],
+            "cop": hours_df["cop"].values
+        },
+        "days_data": {
+            "time_data": [
+                datetime(
+                    year=item.year,
+                    month=item.month,
+                    day=item.day,
+                    hour=item.hour
+                ) for item in days_df.index
+            ],
+            "cop": days_df["cop"].values
+        }
+    }
+    return data
+
+def t(start, end, block="kamba"):
+    result_df, point_lst = get_data("", start, end, DB["query"], TB["query"][block])
+
+    hours_df = resample_data_by_hours(
+        result_df, "Timestamp",
+        {
+            "HHWLoop_HeatLoad": "mean",
+            "SysPower": "sum"
+        }
+    )
+
+
+    days_df = resample_data_by_days(
+        result_df, "Timestamp",
+        True,
+        {},
+        {
+            "HHWLoop_HeatLoad": "mean",
+            "SysPower": "sum"
+        }
+    )
+
+    data = {
+        "hours_data": {
+            "time_data": [
+                datetime(
+                    year=item.year,
+                    month=item.month,
+                    day=item.day,
+                    hour=item.hour
+                ) for item in hours_df.index
+            ],
+            "cop": hours_df["cop"].values
+        },
+        "days_data": {
+            "time_data": [
+                datetime(
+                    year=item.year,
+                    month=item.month,
+                    day=item.day,
+                    hour=item.hour
+                ) for item in days_df.index
+            ],
+            "cop": days_df["cop"].values
+        }
+    }
+    return data
 """
 def get_cona_cost_saving(start, end):
     result_df = get_data("API_COM_COP_SQL", start, end, db, tb["cona"])
@@ -1276,11 +1927,9 @@ def get_cona_cost_saving(start, end):
     return data
 """
 
-# print(
-#     get_cona_heat_provided("2020-12-31 00:00:00", "2021-02-07 23:59:59")
-# )
-
-# data_collation("cona", "2021-02-01 00:00:00", "2021-02-07 23:59:59")
-store_data("cona", "2020-12-31 00:00:00", "2021-02-07 23:59:59")
+# update_history_data()
 
 
+res = get_kamba_water_replenishment("2021-05-13 00:00:00", "2021-05-18 23:59:59")
+if res:
+    print(res)
