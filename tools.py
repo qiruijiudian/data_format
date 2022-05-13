@@ -2,11 +2,14 @@
 # -*- coding: utf-8 -*-
 # @Time    : 2022/4/25 17:21
 # @Author  : MAYA
-
+import platform
 from functools import wraps
-
+from sqlalchemy.dialects.mysql import DATETIME, DOUBLE
 import json
 import logging
+import pymysql
+import traceback
+from sqlalchemy import create_engine
 import numpy as np
 import pandas as pd
 from datetime import datetime
@@ -112,12 +115,145 @@ class DataMissing(Exception):
         return self.error_info
 
 
+def check_time(items):
+    """# 检查时间列是否一致
+
+    :param items: 数据集
+    :return: True or False
+    """
+    if not len(items):
+        logging.info("无数据内容")
+    else:
+        hours_time = items[0]["hours_data"]["time_data"]
+        days_time = items[0]["days_data"]["time_data"]
+        for i in range(1, len(items)):
+            if items[i]["hours_data"]["time_data"] != hours_time:
+                logging.info("时 时间列异常")
+                return False, None, None
+
+            if items[i]["days_data"]["time_data"] != days_time:
+                logging.info("日 时间列异常")
+                return False, None, None
+
+        return True, hours_time, days_time
+
+
+def get_dtype(columns):
+    res = {}
+    for item in columns:
+        if item == "time_data" or item == "Timestamp":
+            res[item] = DATETIME
+        else:
+            res[item] = DOUBLE
+    return res
+
+
+def get_data_range():
+    sql_conf = get_sql_conf(DB["query"])
+    with pymysql.connect(
+            host=sql_conf["host"],
+            user=sql_conf["user"],
+            password=sql_conf["password"],
+            database=sql_conf["database"]
+    ) as conn:
+        cur = conn.cursor()
+        res = {}
+
+        try:
+            context = {"cona": "time", "kamba": "Timestamp", "tianjin": "time"}
+            for k, v in context.items():
+                cur.execute("select {} from {} order by {} asc limit 1;".format(v, k, v))
+                start = cur.fetchone()
+                start = "" if not len(start) else start[0]
+
+                cur.execute("select {} from {} order by {} desc limit 1;".format(v, k, v))
+                end = cur.fetchone()
+                end = "" if not len(end) else end[0]
+
+                res[k] = {"start": start, "end": end}
+            print(res)
+
+        except Exception as e:
+            traceback.print_exc()
+        finally:
+            cur.close()
+
+
+def get_data(sql_key, start, end, db, tb):
+    """查询数据库原始数据
+
+    :param sql_key: 用于查询完整SQL语句的key
+    :param start: 开始时间
+    :param end: 结束时间
+    :param db: 数据库名称
+    :param tb: 数据表名称
+    :return: dataframe格式的数据内容
+    """
+
+    sql_conf = get_sql_conf(db)
+    with pymysql.connect(
+            host=sql_conf["host"],
+            user=sql_conf["user"],
+            password=sql_conf["password"],
+            database=sql_conf["database"]
+    ) as conn:
+        if "cona" in tb:
+            sql = SQL_CONTEXT[tb][sql_key].format(tb, start, end)
+            result_df = pd.read_sql(sql, con=conn).pivot(
+                index='time', columns='pointname', values='value'
+            )
+            return result_df.reset_index()
+        elif "kamba" in tb:
+            common_sql = SQL_CONTEXT["COMMON_SQL"]
+            key_lst = SQL_CONTEXT[tb][sql_key]
+            key_lst = [POINT_DF.get(item) for item in key_lst]
+            sql = common_sql.format(tb, str(tuple(key_lst)), start, end)
+            result_df = pd.read_sql(sql, con=conn).pivot(
+                index='Timestamp', columns='pointname', values='value'
+            )
+            return result_df.reset_index(), key_lst
+
+
+def get_store_conn():
+    """返回数据库连接
+    """
+    sql_conf = get_sql_conf(DB["store"])
+
+    return create_engine(
+        'mysql+pymysql://{}:{}@{}/{}?charset=utf8'.format(
+            sql_conf["user"],
+            sql_conf["password"],
+            sql_conf["host"],
+            sql_conf["database"]
+        )
+    )
+
+
+def get_sql_conf(db):
+    # 获取数据库配置信息
+    if platform.system() == "Windows":
+        return {
+            "user": "root",
+            "password": "299521",
+            "host": "localhost",
+            "database": db,
+        }
+    else:
+        return {
+            "user": "root",
+            "password": "cdqr2008",
+            "host": "121.199.48.82",
+            "database": db
+        }
+
+
 def resample_data_by_hours(df, index, hours_op_dic):
     """按照1小时为周期分组统计数据
     根据hours_op_dic中提供的映射数据统计数据，若不提供映射字典则默认所有数据按照平均值聚合
 
     Args:
         df: 数据集合
+        index: 索引
         hours_op_dic: 聚合函数映射字典，如{"a": "sum", "b": "mean}
 
     Returns:
@@ -157,54 +293,14 @@ def resample_data_by_hours(df, index, hours_op_dic):
     #         data = data.resample('h').mean()
     #     return data, point_lst
 
-# def resample_data_by_hours(df, hours_op_dic):
-#     """按照1小时为周期分组统计数据
-#     根据hours_op_dic中提供的映射数据统计数据，若不提供映射字典则默认所有数据按照平均值聚合
-#
-#     Args:
-#         df: 数据集合
-#         hours_op_dic: 聚合函数映射字典，如{"a": "sum", "b": "mean}
-#
-#     Returns:
-#         错那数据则直接返回分组后的数据(DatetimeIndexResampler类型)，岗巴数据除分组后的数据外还额外返回一个包含查询字段(转换后的英文)的列表
-#     """
-#     if 'cona' in db:
-#
-#         data = df.set_index(pd.to_datetime(df.index))
-#         if len(hours_op_dic):
-#             data = data.resample('h').agg(hours_op_dic)
-#         else:
-#             data = data.resample('h').mean()
-#         return data
-#     elif 'kamba' in db:
-#         data, point_lst = get_data(name, start, end, db)
-#         data = data.set_index(pd.to_datetime(data.index))
-#         if len(hours_op_dic):
-#             if isinstance(hours_op_dic, dict):
-#                 data = data.resample('h').agg(hours_op_dic)
-#             elif isinstance(hours_op_dic, list):
-#                 lst = [data for data in hours_op_dic if not isinstance(data, dict)]
-#                 dic = [data for data in hours_op_dic if isinstance(data, dict)]
-#                 _op_dic = dict(zip(point_lst, lst))
-#                 op_dic = {k: v for k, v in _op_dic.items() if v}
-#                 if dic:
-#                     for _data in dic:
-#                         op_dic.update(_data)
-#                 data = data.resample('h').agg(op_dic)
-#         else:
-#             data = data.resample('h').mean()
-#         return data, point_lst
-
 
 def resample_data_by_days(df, index, just_date=False, hours_op_dic=None, days_op_dic=None):
     """按照24小时为周期分组统计数据
     标准流程为先按照hours_op_dic中提供的映射数据统计数据，在此基础上按照days_op_dic设定的聚合函数来对数据进行二次聚合。
 
         Args:
-            name:数据名称，用于调用get_data获取原始数据
-            start: 开始时间
-            end: 结束时间
-            db: 数据库名称
+            df: 数据集合
+            index: 索引
             just_date: 是否只按照天周期数据做集合，默认为False，若为True则会先调用resample_data_by_hours以此基础再往后执行下一步
             hours_op_dic: 小时周期聚合函数映射字典，如{"a": "sum", "b": "mean}
             days_op_dic: 天周期聚合函数映射字典，同上，在按照1小时分组后以此来对数据进行聚合统计
@@ -228,104 +324,24 @@ def resample_data_by_days(df, index, just_date=False, hours_op_dic=None, days_op
     return df
 
 
-    # if 'cona' in db:
-    #     if just_date:
-    #         data = get_data(name, start, end, db)
-    #         data = data.set_index(pd.to_datetime(data.index)).resample('D')
-    #         if days_op_dic:
-    #             return data.agg(days_op_dic)
-    #         else:
-    #             return data.mean()
-    #     hours_data = resample_data_by_hours(name, start, end, db, hours_op_dic)
-    #     return hours_data.resample('D').agg(days_op_dic)
-    # elif 'kamba' in db:
-    #     if just_date:
-    #         data, point_lst = get_data(name, start, end, db)
-    #         data = data.set_index(pd.to_datetime(data.index)).resample('D')
-    #         if days_op_dic:
-    #             if isinstance(days_op_dic, dict):
-    #                 return data.agg(days_op_dic), point_lst
-    #             elif isinstance(days_op_dic, list):
-    #                 lst = [data for data in days_op_dic if not isinstance(data, dict)]
-    #                 dic = [data for data in days_op_dic if isinstance(data, dict)]
-    #                 _op_dic = dict(zip(point_lst, lst))
-    #                 op_dic = {k: v for k, v in _op_dic.items() if v}
-    #                 if dic:
-    #                     for _data in dic:
-    #                         op_dic.update(_data)
-    #                 return data.agg(op_dic), point_lst
-    #         else:
-    #             return data.mean()
-    #     hours_data, point_lst = resample_data_by_hours(name, start, end, db, hours_op_dic)
-    #     if isinstance(days_op_dic, dict):
-    #         return hours_data.resample('D').agg(days_op_dic), point_lst
-    #     elif isinstance(hours_op_dic, list):
-    #         lst = [data for data in days_op_dic if not isinstance(data, dict)]
-    #         dic = [data for data in days_op_dic if isinstance(data, dict)]
-    #         _op_dic = dict(zip(point_lst, lst))
-    #         op_dic = {k: v for k, v in _op_dic.items() if v}
-    #         if dic:
-    #             for _data in dic:
-    #                 op_dic.update(_data)
-    #         return hours_data.resample('D').agg(op_dic), point_lst
+# 装饰器 打印提示
+def log_hint(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        print("函数 {} 执行".format(func))
+        # logging.info("函数 {} 执行".format(func))
+        try:
+            res = func(*args, **kwargs)
+            print("函数 {} 执行完成".format(func))
+            # logging.info("函数 {} 执行完成".format(func))
+            return res
+        except Exception as e:
+            traceback.print_exc()
+            print("函数 {} 异常，异常内容：{}".format(func, e))
+            # logging.info("函数 {} 异常，异常内容：{}".format(func, e))
+    return wrapper
 
 
-
-# def resample_data_by_days(name, start, end, db, just_date=False, hours_op_dic=None, days_op_dic=None):
-#     """按照24小时为周期分组统计数据
-#     标准流程为先按照hours_op_dic中提供的映射数据统计数据，在此基础上按照days_op_dic设定的聚合函数来对数据进行二次聚合。
-#
-#         Args:
-#             name:数据名称，用于调用get_data获取原始数据
-#             start: 开始时间
-#             end: 结束时间
-#             db: 数据库名称
-#             just_date: 是否只按照天周期数据做集合，默认为False，若为True则会先调用resample_data_by_hours以此基础再往后执行下一步
-#             hours_op_dic: 小时周期聚合函数映射字典，如{"a": "sum", "b": "mean}
-#             days_op_dic: 天周期聚合函数映射字典，同上，在按照1小时分组后以此来对数据进行聚合统计
-#         Returns:
-#             错那数据则直接返回分组后的数据(DataFrame类型)，岗巴数据除DataFrame数据外还额外返回一个包含查询字段(转换后的英文)的列表
-#         """
-#     if 'cona' in db:
-#         if just_date:
-#             data = get_data(name, start, end, db)
-#             data = data.set_index(pd.to_datetime(data.index)).resample('D')
-#             if days_op_dic:
-#                 return data.agg(days_op_dic)
-#             else:
-#                 return data.mean()
-#         hours_data = resample_data_by_hours(name, start, end, db, hours_op_dic)
-#         return hours_data.resample('D').agg(days_op_dic)
-#     elif 'kamba' in db:
-#         if just_date:
-#             data, point_lst = get_data(name, start, end, db)
-#             data = data.set_index(pd.to_datetime(data.index)).resample('D')
-#             if days_op_dic:
-#                 if isinstance(days_op_dic, dict):
-#                     return data.agg(days_op_dic), point_lst
-#                 elif isinstance(days_op_dic, list):
-#                     lst = [data for data in days_op_dic if not isinstance(data, dict)]
-#                     dic = [data for data in days_op_dic if isinstance(data, dict)]
-#                     _op_dic = dict(zip(point_lst, lst))
-#                     op_dic = {k: v for k, v in _op_dic.items() if v}
-#                     if dic:
-#                         for _data in dic:
-#                             op_dic.update(_data)
-#                     return data.agg(op_dic), point_lst
-#             else:
-#                 return data.mean()
-#         hours_data, point_lst = resample_data_by_hours(name, start, end, db, hours_op_dic)
-#         if isinstance(days_op_dic, dict):
-#             return hours_data.resample('D').agg(days_op_dic), point_lst
-#         elif isinstance(hours_op_dic, list):
-#             lst = [data for data in days_op_dic if not isinstance(data, dict)]
-#             dic = [data for data in days_op_dic if isinstance(data, dict)]
-#             _op_dic = dict(zip(point_lst, lst))
-#             op_dic = {k: v for k, v in _op_dic.items() if v}
-#             if dic:
-#                 for _data in dic:
-#                     op_dic.update(_data)
-#             return hours_data.resample('D').agg(op_dic), point_lst
 SQL_CONTEXT = {
     "COMMON_SQL": """select * from {} where pointname in {} and Timestamp between '{}' and '{}'""",
     "cona": {
@@ -537,14 +553,6 @@ select * from {} WHERE pointname in ('f3_WSHP004_F','f2_WSHP003_HHWLT','f3_WSHP0
                     '循环泵10-4电度量', '冷却塔循环14-1电度量', '冷却塔循环14-2电度量', '冷却塔循环14-3电度量',
                     '蓄热水池放热5-1电度量', '水源热泵1电量', '水源热泵2电量', '水源热泵3电量', '水源热泵4电量', '水源热泵5电量',
                     '水源热泵6电量']
-
-
-
-
-
-
-
-
     }
 
 
@@ -574,23 +582,26 @@ TB = {
         "kamba": {
             "hours": "kamba_hours_data",
             "days": "kamba_days_data",
+            "pool_temperature": {
+                "hours": "kamba_hours_pool_temperature",
+                "days": "kamba_days_pool_temperature"
+            }
         }
     }
 
 }
 
+height = ['0', '0.2', '0.4', '0.6', '0.8', '1', '1.2', '1.4', '1.6', '1.8', '2', '2.2', '2.4',
+              '2.6', '2.8',
+              '3', '3.2', '3.4', '3.6', '3.8', '4', '4.2', '4.4', '4.6', '4.8', '5', '5.2', '5.4',
+              '5.73', '6.06',
+              '6.39', '6.72', '7.05', '7.38', '7.71', '8.04', '8.37', '8.7', '9.03', '9.36']
+volume = ['1031.370428', '1044.176354', '1057.061292', '1070.025243', '1083.068206', '1096.190181',
+          '1109.391169', '1122.671169', '1136.030181', '1149.468206', '1162.985243', '1176.581292',
+          '1190.256354', '1204.010428', '1217.843514', '1231.755613', '1245.746724', '1259.816848',
+          '1273.965984', '1288.194132', '1302.501292', '1316.887465', '1331.35265', '1367.861292',
+          '1382.603021', '1397.423761', '1412.323514', '2024.324037', '2146.595148', '2180.564037',
+          '2214.799593', '2249.301815', '2284.070704', '2319.106259', '2354.408481', '2389.97737',
+          '2425.812926', '2461.915148', '2498.284037', '840.8894115']
 
-def log_hint(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        print("函数 {} 执行".format(func))
-        # logging.info("函数 {} 执行".format(func))
-        try:
-            res = func(*args, **kwargs)
-            print("函数 {} 执行完成".format(func))
-            # logging.info("函数 {} 执行完成".format(func))
-            return res
-        except Exception as e:
-            print("函数 {} 异常，异常内容：{}".format(func, e))
-            # logging.info("函数 {} 异常，异常内容：{}".format(func, e))
-    return wrapper
+get_data_range()

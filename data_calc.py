@@ -4,41 +4,19 @@
 # @Author  : MAYA
 import random
 import pymysql
-import platform
 import pandas as pd
 import logging
 import traceback
 import numpy as np
-from sqlalchemy import create_engine
-from sqlalchemy.types import FLOAT, DateTime
-from tools import resample_data_by_hours, resample_data_by_days, SQL_CONTEXT, DB, TB, log_hint, POINT_DF
+from tools import resample_data_by_hours, resample_data_by_days, DB, TB, log_hint, check_time, \
+    get_dtype, get_data, get_data_range, get_store_conn, get_sql_conf
+from sqlalchemy.dialects.mysql import DATETIME, DOUBLE
+
 from datetime import datetime
 import collections
 
 
 # ************************************************  公共函数  ************************************************************
-
-def check_time(items):
-    """# 检查时间列是否一致
-
-    :param items: 数据集
-    :return: True or False
-    """
-    if not len(items):
-        logging.info("无数据内容")
-    else:
-        hours_time = items[0]["hours_data"]["time_data"]
-        days_time = items[0]["days_data"]["time_data"]
-        for i in range(1, len(items)):
-            if items[i]["hours_data"]["time_data"] != hours_time:
-                logging.info("时 时间列异常")
-                return False, None, None
-
-            if items[i]["days_data"]["time_data"] != days_time:
-                logging.info("日 时间列异常")
-                return False, None, None
-
-        return True, hours_time, days_time
 
 
 def data_collation(block, start, end):
@@ -48,17 +26,27 @@ def data_collation(block, start, end):
     }
     print("{} 数据获取 开始".format(block))
     if block == "cona":
-        # 错那统计内容
-        # 1. 地热井提供热量
-        # 2. 综合COP
-        # 3. 节省供暖费用
-        # 4. 供回水温度
-        # 5. 供热量
-        # 6. 负荷量
-        # 7. 补水量
-        # 8. 子页面 综合COP
-        # 9. 子页面 水源热泵COP
-        # 10. 子页面 供水温度与气温
+        # items = {
+        #     "地热井提供热量": {"high_temp_plate_exchange_heat_production": "高温版换制热量",
+        #                 "water_heat_pump_heat_production": "水源热泵制热量",
+        #                 "geothermal_wells_high_heat_provide": "地热井可提供高温热量",
+        #                 "geothermal_wells_low_heat_provide": "地热井可提供低温热量", },
+        #     "综合COP": {"com_cop": "COP能效"},
+        #     "供暖费用": {"cost_saving": "供暖费用", "high_temp_charge": "高温供暖费用", "low_temp_charge": "低温供暖费用"},
+        #     "供热量": {"heat_well_heating": "热力井供热", "heat_pipe_network_heating": "热力管网供热",
+        #             "water_heat_pump_heat_production": "水源热泵供热", "high_temp_plate_exchange_heat_production": "高温板换供热",
+        #             "max_load": "最大负荷", "min_load": "最小负荷", "avg_load": "平均负荷", },
+        #     "供回水温度": {"water_supply_temperature": "供水温度", "return_water_temperature": "回水温度",
+        #               "supply_return_water_temp_diff": "供回水温差"},
+        #     "补水量": {"water_replenishment": "补水量", "water_replenishment_limit": "补水量限值"},
+        #     "机房综合COP能效": {"f2_cop": "2号机房综合COP", "f3_cop": "3号机房综合COP", "f4_cop": "4号机房综合COP", "f5_cop": "5号机房综合COP"},
+        #     "机房水源热泵COP能效": {"f2_whp_cop": "2号机房水源热泵COP", "f3_whp_cop": "3号机房水源热泵COP", "f4_whp_cop": "4号机房水源热泵COP",
+        #                     "f5_whp_cop": "5号机房水源热泵COP"},
+        #     "机房管网供水温度": {"f2_HHWLoop001_ST": "2号机房支路1供水温度", "f3_HHWLoop001_ST": "3号机房支路1供水温度",
+        #                  "f3_HHWLoop002_ST": "3号机房支路2供水温度", "f3_HHWLoop003_ST": "3号机房支路3供水温度",
+        #                  "f4_HHWLoop001_ST": "4号机房支路1供水温度", "f5_HHWLoop001_ST": "5号机房支路1供水温度", },
+        #     "日平均温度列表": {}
+        # }
         geothermal_wells_heat_provide = get_cona_geothermal_wells_heat_provide(start, end)
         com_cop = get_cona_com_cop(start, end)
         cost_saving = get_cona_cost_saving(start, end)
@@ -109,50 +97,120 @@ def data_collation(block, start, end):
         else:
             print("数据获取异常")
             exit()
+    elif block == "kamba":
+        # 岗巴统计内容
+        # items = {
+        #     "蓄热水池可用热量": {"low_heat_total": "蓄热水池可用低温热量", "high_heat_total": "蓄热水池可用高温热量",
+        #                  "heat_supply_days": "电锅炉可替换供热天数"},
+        #     "系统COP": {"cop": "系统综合COP能效"},
+        #     "水源热泵COP": {"wshp_cop": "水源热泵COP能效"},
+        #     "太阳能集热量": {"solar_collector": "太阳能集热量"},
+        #     "补水量": {"heat_water_replenishment": "补水量", "heat_water_replenishment_limit": "补水量限值"},
+        #     "太阳能矩阵供回水温度": {"solar_matrix_supply_water_temp": "太阳能矩阵供水温度",
+        #                    "solar_matrix_return_water_temp": "太阳能矩阵回水温度"},
+        #     "负荷": {"max_load": "最大负荷", "min_load": "最小负荷", "avg_load": "平均负荷"},
+        #     "末端供回水温度与温差": {"end_supply_water_temp": "末端供水温度", "end_return_water_temp": "末端回水温度",
+        #                    "end_return_water_temp_diff": "末端供回水温差", "temp": "平均温度"},
+        #     "供热分析": {
+        #         "hours_data": {"high_temperature_plate_exchange_heat": "高温板换制热量", "wshp_heat": "水源热泵制热量",
+        #                        "high_temperature_plate_exchange_heat_rate": "高温板换制热功率"},
+        #         "days_data": {"high_temperature_plate_exchange_heat": "高温板换制热总量", "wshp_heat": "水源热泵制热总量"}
+        #     },
+        #     "太阳能集热分析": {
+        #         "hours_data": {"solar_collector_heat": "太阳能集热量", "heat_supply": "供热量"},
+        #         "days_data": {"solar_collector_heat": "太阳能集热量", "heat_supply": "供热量", "rate": "短期太阳能保证率"}
+        #     },
+        #     "制热量情况": {"rate": "供热率", "heat_supply": "供热量", "power_consume": "水源热泵耗电量"},
+        #     "节省电费": {"cost_saving": "节省电费", "power_consumption": "耗电量"},
+        #     "co2减排量": {"power_consume": "耗电量", "co2_emission_reduction": "co2减排量", "co2_equal_num": "等效种植数目数量"},
+        #     "水池温度": {"hours_data": "各水池时平均温度字典", "days_data": "各水池日平均温度字典"}
+        # }
+        heat_storage_heat = get_kamba_heat_storage_heat(start, end)
+        com_cop = get_kamba_com_cop(start, end)
+        wshp_cop = get_kamba_wshp_cop(start, end)
+        solar_collection = get_kamba_solar_collection(start, end)
+        water_replenishment = get_kamba_water_replenishment(start, end)
+        solar_matrix_supply_and_return_water_temperature = get_kamba_solar_matrix_supply_and_return_water_temperature(start, end)
+        load = get_kamba_load(start, end)
+        end_supply_and_return_water_temp = get_kamba_end_supply_and_return_water_temp(start, end)
+        calories = get_kamba_calories(start, end)
+        solar_heat_supply = get_kamba_solar_heat_supply(start, end)
+        heat_supply = get_kamba_heat_supply(start, end)
+        cost_saving = get_kamba_cost_saving(start, end)
+        co2_emission = get_kamba_co2_emission(start, end)
+        pool_temperature = get_kamba_pool_temperature(start, end)
+
+        res["pool_data"] = pool_temperature
+
+        items = [
+            heat_storage_heat, com_cop, wshp_cop, solar_collection, water_replenishment,
+            solar_matrix_supply_and_return_water_temperature, load, end_supply_and_return_water_temp, calories,
+            solar_heat_supply, heat_supply, cost_saving, co2_emission
+        ]
+        success, hours_time, days_time = check_time(items)
+        print(success)
+
+        for item in items:
+            for key in ["hours_data", "days_data"]:
+                print("{} start".format(key))
+                for k, v in item[key].items():
+                    print(k, len(v))
+                print("{} end".format(key))
+            print("*" * 100)
+
+        if success:
+
+            for item in items:
+                for key in ["hours_data", "days_data"]:
+                    if item.get(key):
+                        res[key].update(item[key])
+
+        else:
+            print("数据获取异常")
+            exit()
     print("{} 数据获取 完成".format(block))
     return res
 
 
-def get_dtype(columns):
-    res = {}
-    for item in columns:
-        if item == "time_data":
-            res[item] = DateTime
-        else:
-            res[item] = FLOAT
-    return res
-
-
 def update_history_data():
-    context = {
-        "cona": {
-            "start": "2020-12-31 00:00:00",
-            "end": "2021-05-14 23:59:59"
-        },
-        "kamba": {
-            "start": "2020-08-17 00:00:00",
-            "end": "2022-05-09 23:59:59"
-        }
-    }
-    start, end = "2020-12-31 00:00:00", "2021-05-14 23:59:59"
-    for block in ["cona"]:
-        items = data_collation(block, start, end)
-        store_data(block, items)
+
+    start, end = "2020-08-17 00:00:00", "2022-05-10 23:59:59"
+    for block in ["kamba"]:
+        if block == "cona":
+            items = data_collation(block, start, end)
+            store_data(block, items)
+        elif block == "kamba":
+            items = data_collation(block, start, end)
+
+            keys = ["hours_data", "days_data"]
+            for key in keys:
+                print("*" * 100)
+                print("start {}".format(key))
+                item = items[key]
+                for k, v in item.items():
+                    print(k, len(v))
+                print("*" * 100)
+
+            # # TODO load
+            # hours_data = items["hours_data"]
+            # days_data = items["days_data"]
+            # hours_data["time_data"] = [item.strftime("%Y-%m-%d %H:%M:%S") for item in hours_data["time_data"]]
+            # days_data["time_data"] = [item.strftime("%Y-%m-%d") for item in hours_data["time_data"]]
+            # with open("hours.json", "w", encoding="utf-8") as f:
+            #
+            #     f.write(json.dumps(hours_data, indent=4, ensure_ascii=False))
+            # with open("days.json", "w", encoding="utf-8") as f:
+            #     f.write(json.dumps(hours_data, indent=4, ensure_ascii=False))
 
 
-def get_store_conn():
-    """返回数据库连接
-    """
-    sql_conf = get_sql_conf(DB["store"])
+            pool_data = items.pop("pool_data")
+            store_data(block, items)
 
-    return create_engine(
-        'mysql+pymysql://{}:{}@{}/{}?charset=utf8'.format(
-            sql_conf["user"],
-            sql_conf["password"],
-            sql_conf["host"],
-            sql_conf["database"]
-        )
-    )
+            hours_pool_df = pd.DataFrame(pool_data["hours_data"])
+            days_pool_df = pd.DataFrame(pool_data["days_data"])
+            pool_dtype = {k: DOUBLE if k != "Timestamp" else DATETIME for k in hours_pool_df.columns}
+            store_df_to_sql(hours_pool_df, "kamba_hours_pool_data", pool_dtype)
+            store_df_to_sql(days_pool_df, "kamba_days_pool_data", pool_dtype)
 
 
 def store_data(block, items):
@@ -170,14 +228,8 @@ def store_data(block, items):
         print("开始 {} - {} 上传".format(block, "时数据"))
         hours_dtype = get_dtype(hours_data.keys())
         hours_df = pd.DataFrame(hours_data)
-        hours_df.to_csv("hours.csv")
-        hours_df.to_sql(
-            name=TB["store"][block]["hours"],
-            con=engine,
-            if_exists="append",
-            index=False,
-            dtype=hours_dtype
-        )
+        # hours_df.to_csv("hours.csv")
+        hours_df.to_sql(name=TB["store"][block]["hours"], con=engine, if_exists="append", index=False, dtype=hours_dtype)
         # logging.info("完成 {} - {} 上传".format(block, "时数据"))
         print("完成 {} - {} 上传".format(block, "时数据"))
 
@@ -186,13 +238,7 @@ def store_data(block, items):
         days_dtype = get_dtype(days_data.keys())
         days_df = pd.DataFrame(days_data)
         days_df.to_csv("days.csv")
-        days_df.to_sql(
-            name=TB["store"][block]["days"],
-            con=engine,
-            if_exists="append",
-            index=False,
-            dtype=days_dtype
-        )
+        days_df.to_sql(name=TB["store"][block]["days"], con=engine, if_exists="append", index=False, dtype=days_dtype)
         # logging.info("完成 {} - {} 上传".format(block, "日数据"))
         print("完成 {} - {} 上传".format(block, "日数据"))
 
@@ -203,58 +249,25 @@ def store_data(block, items):
         engine.dispose()
 
 
-def get_sql_conf(db):
-    # 获取数据库配置信息
-    if platform.system() == "Windows":
-        return {
-            "user": "root",
-            "password": "299521",
-            "host": "localhost",
-            "database": db,
-        }
-    else:
-        return {
-            "user": "root",
-            "password": "cdqr2008",
-            "host": "121.199.48.82",
-            "database": db
-        }
+def store_df_to_sql(df, tb_name, d_type=None):
+    engine = get_store_conn()
+    try:
+        # logging.info("开始 上传数据至 {}".format(tb_name))
+        print("开始 上传数据至 {}".format(tb_name))
+        if d_type:
+            df.to_sql(name=tb_name, con=engine, if_exists="append", index=False, dtype=d_type)
+        else:
+            df.to_sql(name=tb_name, con=engine, if_exists="append", index=False)
+        # logging.info("完成 数据上传 - {}".format(tb_name))
+        print("完成 数据上传 - {}".format(tb_name))
+    except Exception as e:
+        logging.error("数据上传异常 - {}".format(tb_name))
+        traceback.print_exc()
+    finally:
+        engine.dispose()
 
 
-def get_data(sql_key, start, end, db, tb):
-    """查询数据库原始数据
 
-    :param sql_key: 用于查询完整SQL语句的key
-    :param start: 开始时间
-    :param end: 结束时间
-    :param db: 数据库名称
-    :param tb: 数据表名称
-    :return: dataframe格式的数据内容
-    """
-
-    sql_conf = get_sql_conf(db)
-    with pymysql.connect(
-            host=sql_conf["host"],
-            user=sql_conf["user"],
-            password=sql_conf["password"],
-            database=sql_conf["database"]
-    ) as conn:
-        if "cona" in tb:
-            sql = SQL_CONTEXT[tb][sql_key].format(tb, start, end)
-            result_df = pd.read_sql(sql, con=conn).pivot(
-                index='time', columns='pointname', values='value'
-            )
-            return result_df.reset_index()
-        elif "kamba" in tb:
-            common_sql = SQL_CONTEXT["COMMON_SQL"]
-            key_lst = SQL_CONTEXT[tb][sql_key]
-            key_lst = [POINT_DF.get(item) for item in key_lst]
-            sql = common_sql.format(tb, str(tuple(key_lst)), start, end)
-            result_df = pd.read_sql(sql, con=conn).pivot(
-                index='Timestamp', columns='pointname', values='value'
-            )
-            result_df.replace(to_replace='.*[u\.].*', value=np.nan, regex=True, inplace=True)
-            return result_df.reset_index(), key_lst
 
 
 # **********************************************************************************************************************
@@ -401,7 +414,7 @@ def get_cona_com_cop(start, end, block="cona"):
     :param end: 结束时间
     :return: 包含时数据和日数据的字典
         time_data: 日期,
-        com_cop: COP能效,
+        com_cop: COP能效
 
     """
     result_df = get_data("API_COM_COP_SQL", start, end, DB["query"], TB["query"][block])
@@ -681,7 +694,7 @@ def get_cona_heat_provided(start, end, block="cona"):
     :param end: 结束时间
     :return: 包含时数据和日数据的字典
         time_data: 日期,
-        heat_well_heating:  热力井供热,
+        heat_well_heating:  热力井供热
         heat_pipe_network_heating: 热力管网供热,
         water_heat_pump_heat_production: 水源热泵供热
         high_temp_plate_exchange_heat_production: 高温板换供热
@@ -1322,7 +1335,7 @@ def get_cona_temp(time_data):
 
 # **********************************************  岗巴 统计项目  *********************************************************
 
-
+@log_hint
 def get_kamba_heat_storage_heat(start, end, block="kamba"):
     """岗巴 蓄热水池可用热量
     :param block: 隶属 错那数据
@@ -1344,6 +1357,12 @@ def get_kamba_heat_storage_heat(start, end, block="kamba"):
               '2214.799593', '2249.301815', '2284.070704', '2319.106259', '2354.408481', '2389.97737',
               '2425.812926', '2461.915148', '2498.284037', '840.8894115']
     result_df = result_df.set_index(pd.to_datetime(result_df["Timestamp"]))
+
+    columns = result_df.columns
+    for item in point_lst:
+        if item not in columns:
+            result_df[item] = np.nan
+
     days_df = result_df.resample('D')
 
     days_high_heat, days_low_heat, days_time_data, days_low_heat_total, days_high_heat_total = [], [], [], [], []
@@ -1361,9 +1380,6 @@ def get_kamba_heat_storage_heat(start, end, block="kamba"):
         if not days_time_data:
             days_time_data = [datetime(year=item.year, month=item.month, day=item.day) for item in days_heat_data.index]
 
-        # print(days_high_heat, len(days_high_heat))
-        # print(days_low_heat, len(days_low_heat))
-
     for time_index in range(len(days_time_data)):
         days_low_heat_total.append(sum([item[time_index] for item in days_low_heat]))
         days_high_heat_total.append(sum([item[time_index] for item in days_high_heat]))
@@ -1375,6 +1391,7 @@ def get_kamba_heat_storage_heat(start, end, block="kamba"):
         "high_heat_total": days_high_heat_total,
         "heat_supply_days": days_heat_supply_days
     }
+
 
     hours_df = result_df.resample("h")
     hours_high_heat, hours_low_heat, hours_time_data, hours_low_heat_total, hours_high_heat_total = [], [], [], [], []
@@ -1402,7 +1419,7 @@ def get_kamba_heat_storage_heat(start, end, block="kamba"):
     for time_index in range(len(hours_time_data)):
         hours_low_heat_total.append(sum([item[time_index] for item in hours_low_heat]))
         hours_high_heat_total.append(sum([item[time_index] for item in hours_high_heat]))
-    hours_heat_supply_days = [item / 2000 / 2400 for item in days_high_heat_total]
+    hours_heat_supply_days = [item / 2000 / 2400 for item in hours_high_heat_total]
     data["hours_data"] = {
         "time_data": hours_time_data,
         "low_heat_total": hours_low_heat_total,
@@ -1413,6 +1430,7 @@ def get_kamba_heat_storage_heat(start, end, block="kamba"):
     return data
 
 
+@log_hint
 def get_kamba_com_cop(start, end, block="kamba"):
     """岗巴 系统COP
     :param block: 隶属 错那数据
@@ -1482,6 +1500,7 @@ def get_kamba_com_cop(start, end, block="kamba"):
     return data
 
 
+@log_hint
 def get_kamba_wshp_cop(start, end, block="kamba"):
     """岗巴 水源热泵COP
     :param block: 隶属 错那数据
@@ -1557,6 +1576,7 @@ def get_kamba_wshp_cop(start, end, block="kamba"):
     return data
 
 
+@log_hint
 def get_kamba_solar_collection(start, end, block="kamba"):
     """岗巴 太阳能集热量
     :param block: 隶属 错那数据
@@ -1564,7 +1584,7 @@ def get_kamba_solar_collection(start, end, block="kamba"):
     :param end: 结束时间
     :return: 包含时数据和日数据的字典
        time_data: 日期,
-       wshp_cop:  水源热泵cop能效
+       solar_collector:  太阳能集热量
     """
     result_df, point_lst = get_data("SOLAR_COLLECTOR", start, end, DB["query"], TB["query"][block])
     result_df['solar_collector'] = result_df[point_lst[0]] * 4.186 * (
@@ -1603,6 +1623,7 @@ def get_kamba_solar_collection(start, end, block="kamba"):
     return data
 
 
+@log_hint
 def get_kamba_water_replenishment(start, end, block="kamba"):
     """岗巴 补水量
     :param block: 隶属 错那数据
@@ -1670,6 +1691,7 @@ def get_kamba_water_replenishment(start, end, block="kamba"):
     return data
 
 
+@log_hint
 def get_kamba_solar_matrix_supply_and_return_water_temperature(start, end, block="kamba"):
     """岗巴 太阳能矩阵供回水温度
     :param block: 隶属 错那数据
@@ -1715,6 +1737,7 @@ def get_kamba_solar_matrix_supply_and_return_water_temperature(start, end, block
     return data
 
 
+@log_hint
 def get_kamba_load(start, end, block="kamba"):
     """岗巴 负荷
     :param block: 隶属 错那数据
@@ -1779,6 +1802,7 @@ def get_kamba_load(start, end, block="kamba"):
     return data
 
 
+@log_hint
 def get_kamba_end_supply_and_return_water_temp(start, end, block="kamba"):
     """岗巴 末端供回水温度与温差
     :param block: 隶属 错那数据
@@ -1847,6 +1871,7 @@ def get_kamba_end_supply_and_return_water_temp(start, end, block="kamba"):
     return data
 
 
+@log_hint
 def get_kamba_calories(start, end, block="kamba"):
     """岗巴 供热分析
     :param block: 隶属 错那数据
@@ -1929,6 +1954,7 @@ def get_kamba_calories(start, end, block="kamba"):
     return data
 
 
+@log_hint
 def get_kamba_solar_heat_supply(start, end, block="kamba"):
     """岗巴 太阳能集热分析
     :param block: 隶属 错那数据
@@ -1996,6 +2022,7 @@ def get_kamba_solar_heat_supply(start, end, block="kamba"):
     return data
 
 
+@log_hint
 def get_kamba_heat_supply(start, end, block="kamba"):
     """岗巴 制热量情况
     :param block: 隶属 错那数据
@@ -2016,7 +2043,6 @@ def get_kamba_heat_supply(start, end, block="kamba"):
 
     power_df["power"] = power_df.sum(axis=1)
 
-
     load_df = load_df.loc[:, ["Timestamp", "HHWLoop_HeatLoad"]]
     power_df = power_df.loc[:, ["Timestamp", "power"]]
     power_consume = power_df.set_index(pd.to_datetime(power_df["Timestamp"]))
@@ -2028,15 +2054,17 @@ def get_kamba_heat_supply(start, end, block="kamba"):
     hours_power_consume, hours_count = pd.Series([]), 0
 
     for date, df in hours_power:
-        f_line = df.loc[df.index[0]]
-        l_line = df.loc[df.index[-1]]
-        diff = l_line - f_line
-        hours_power_consume[hours_count] = diff["power"]
+        if len(df.index) >= 2:
+            f_line = df.loc[df.index[0]]
+            l_line = df.loc[df.index[-1]]
+            diff = l_line - f_line
+            hours_power_consume[hours_count] = diff["power"]
+        else:
+            hours_power_consume[hours_count] = np.nan
         hours_count += 1
 
     hours_rate = (hours_avg_loads - hours_power_consume) / hours_avg_loads
     hours_heat_supply = hours_avg_loads
-
 
     days_load = resample_data_by_days(
         load_df, "Timestamp", False, {"HHWLoop_HeatLoad": "mean"}, {"HHWLoop_HeatLoad": "mean"}
@@ -2047,10 +2075,13 @@ def get_kamba_heat_supply(start, end, block="kamba"):
     days_power_consume, count = pd.Series([]), 0
 
     for date, df in days_power:
-        f_line = df.loc[df.index[0]]
-        l_line = df.loc[df.index[-1]]
-        diff = l_line - f_line
-        days_power_consume[count] = diff["power"]
+        if len(df.index) >=  2:
+            f_line = df.loc[df.index[0]]
+            l_line = df.loc[df.index[-1]]
+            diff = l_line - f_line
+            days_power_consume[count] = diff["power"]
+        else:
+            days_power_consume[count] = np.nan
         count += 1
 
     days_rate = (days_avg_loads - days_power_consume) / days_avg_loads
@@ -2087,8 +2118,9 @@ def get_kamba_heat_supply(start, end, block="kamba"):
     return data
 
 
+@log_hint
 def get_kamba_cost_saving(start, end, block="kamba"):
-    """岗巴 制热量情况
+    """岗巴 节省电费
     :param block: 隶属 错那数据
     :param start: 开始时间
     :param end: 结束时间
@@ -2187,19 +2219,33 @@ def get_kamba_cost_saving(start, end, block="kamba"):
     return data
 
 
-def l(df):
-    print("*" * 100)
-    print(type(df))
-    print(df)
-    print("*" * 100)
-
-
+@log_hint
 def get_kamba_co2_emission(start, end, block="kamba"):
+    """岗巴 co2减排量
+    :param block: 隶属 错那数据
+    :param start: 开始时间
+    :param end: 结束时间
+    :return: 包含时数据和日数据的字典
+        time_data: 日期
+        power_consume: 耗电量
+        co2_emission_reduction: co2减排量  需要计算累加值
+        co2_equal_num: 等效种植数目数量
+    """
     result_df, point_lst = get_data("POWER_CONSUME", start, end, DB["query"], TB["query"][block])
-    result_df["power_consume"] = result_df.loc[:, point_lst].sum(axis=1)
-    result_df = result_df.loc[:, ["Timestamp", "power_consume"]]
+    result_df = result_df.set_index("Timestamp", drop=True)
 
-    result_df = result_df.set_index(result_df["Timestamp"])
+    # 数据填充 针对部分日期数据缺失
+    all_dates = pd.date_range(start, end, freq="15min")
+    result_index = result_df.index
+
+    for _index in all_dates:
+        if _index not in result_index:
+            for item in point_lst:
+                result_df.loc[_index, item] = np.nan
+
+    result_df.sort_values("Timestamp", inplace=True)
+    result_df["power_consume"] = result_df.loc[:, point_lst].sum(axis=1)
+    result_df = result_df.loc[:, ["power_consume"]]
 
     hours_consume_items, days_consume_items = collections.OrderedDict(), collections.OrderedDict()
 
@@ -2216,9 +2262,9 @@ def get_kamba_co2_emission(start, end, block="kamba"):
     for day_index in result_df.index:
         days_key = datetime(year=day_index.year, month=day_index.month, day=day_index.day)
         if days_key not in days_consume_items:
-            days_consume_items[days_key] = [result_df.loc[days_key, "power_consume"]]
+            days_consume_items[days_key] = [result_df.loc[day_index, "power_consume"]]
         else:
-            days_consume_items[days_key].append(result_df.loc[days_key, "power_consume"])
+            days_consume_items[days_key].append(result_df.loc[day_index, "power_consume"])
     days_power_consume = [item[-1] - item[0] for item in days_consume_items.values()]
     days_co2_emission_reduction = [(item[-1] - item[0]) * 0.5839 for item in days_consume_items.values()]
     days_co2_equal_num = [(item[-1] - item[0]) * 0.5839 / 1.75 for item in days_consume_items.values()]
@@ -2239,77 +2285,37 @@ def get_kamba_co2_emission(start, end, block="kamba"):
     return data
 
 
-def t(start, end, block="kamba"):
-    result_df, point_lst = get_data("", start, end, DB["query"], TB["query"][block])
+@log_hint
+def get_kamba_pool_temperature(start, end, block="kamba"):
+    """岗巴 水池温度
+    :param block: 隶属 错那数据
+    :param start: 开始时间
+    :param end: 结束时间
+    :return: 包含时数据和日数据的字典
+        time_data: 日期
+        hours_data: 各水池时平均温度字典
+        days_data: 各水池日平均温度字典
+    """
+    result_df, point_lst = get_data("ALL_LEVEL_TEMP", start, end, DB["query"], TB["query"][block])
 
-    hours_df = resample_data_by_hours(
-        result_df, "Timestamp",
-        {
-            "HHWLoop_HeatLoad": "mean",
-            "SysPower": "sum"
-        }
-    )
+    agg_dic = {k: "mean" for k in result_df.columns if k != "Timestamp"}
+    hours_df = resample_data_by_hours(result_df, "Timestamp", agg_dic).reset_index()
+    days_df = resample_data_by_days(result_df, "Timestamp", True, {}, agg_dic).reset_index()
 
+    hours_data = collections.OrderedDict()
+    days_data = collections.OrderedDict()
 
-    days_df = resample_data_by_days(
-        result_df, "Timestamp",
-        True,
-        {},
-        {
-            "HHWLoop_HeatLoad": "mean",
-            "SysPower": "sum"
-        }
-    )
+    for column in hours_df.columns:
+        hours_data[column] = hours_df[column].values
 
-    data = {
-        "hours_data": {
-            "time_data": [
-                datetime(
-                    year=item.year,
-                    month=item.month,
-                    day=item.day,
-                    hour=item.hour
-                ) for item in hours_df.index
-            ],
-            "cop": hours_df["cop"].values
-        },
-        "days_data": {
-            "time_data": [
-                datetime(
-                    year=item.year,
-                    month=item.month,
-                    day=item.day,
-                    hour=item.hour
-                ) for item in days_df.index
-            ],
-            "cop": days_df["cop"].values
-        }
+    for column in days_df.columns:
+        days_data[column] = days_df[column].values
+
+    return {
+        "hours_data": hours_data,
+        "days_data": days_data
     }
-    return data
-
-"""
-def get_cona_cost_saving(start, end):
-    result_df = get_data("API_COM_COP_SQL", start, end, db, tb["cona"])
-
-    hours_df = resample_data_by_hours(result_df, {})
-    days_df = resample_data_by_days(result_df, False, {}, {})
-
-    data = {
-        "hours_data": {
-            'time_data': [item for item in hours_df.index],
-            'values': hours_cop.values
-        },
-        "days_data": {
-            'time_data': [item for item in days_df.index],
-            'values': days_cop.values
-        }
-    }
-    return data
-"""
-
-# update_history_data()
 
 
-res = get_kamba_co2_emission("2021-05-13 00:00:00", "2021-05-18 23:59:59")
-if res:
-    print(res)
+update_history_data()
+

@@ -2,20 +2,35 @@
 # -*- coding: utf-8 -*-
 # @Time    : 2022/5/9 14:04
 # @Author  : MAYA
+import pandas as pd
+from data_calc import get_kamba_co2_emission
+import json
 
 
-a = ['mean', None, None, 'mean', 'mean', 'mean',
-                                                             {'heat_water_replenishment_limit': 'mean'}
-                                                             ]
-lst = [data for data in a if not isinstance(data, dict)]
-dic = [data for data in a if isinstance(data, dict)]
-print(lst, dic)
-point_lst = ['HHWLoop_MUflow', 'HHWLoop_RFlow', 'HHWLoop_BypassFlow', 'Pit_MU_flow', 'Solar_MUflow', 'SolarRFM_0201']
-_op_dic = dict(zip(point_lst, lst))
-print(_op_dic)
-op_dic = {k: v for k, v in _op_dic.items() if v}
-# if dic:
-# for _data in dic:
-#   op_dic.update(_data)
-# data = data.resample('h').agg(op_dic)
-# print(a)
+
+items = get_kamba_co2_emission("2021-07-16 00:00:00", "2021-07-20 23:59:59")
+for key in ["hours_data", "days_data"]:
+        data = items[key]
+        for k, v in data.items():
+                print(k, len(v))
+
+
+hours_time = items["hours_data"]["time_data"]
+days_time = items["days_data"]["time_data"]
+
+hour_dates = pd.date_range("2021-07-16 00:00:00", "2021-07-20 23:59:59", freq="1H")
+print(len(hour_dates))
+day_dates = pd.date_range("2021-07-16 00:00:00", "2021-07-20 23:59:59", freq="1D")
+print(len(day_dates))
+
+print(len(hours_time) == len(hour_dates))
+print(len(days_time) == len(day_dates))
+
+print(hours_time == hour_dates)
+print(days_time == day_dates)
+
+print(hours_time)
+
+# for item in hour_dates:
+
+

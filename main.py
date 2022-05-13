@@ -6,8 +6,8 @@ import platform
 import traceback
 import numpy as np
 import pandas as pd
-from sqlalchemy import create_engine
-from sqlalchemy.types import DateTime, VARCHAR, FLOAT
+from sqlalchemy import create_engine, Column
+from sqlalchemy.dialects.mysql import DOUBLE, DATETIME, VARCHAR, FLOAT
 from configparser import ConfigParser
 from datetime import datetime, timedelta
 from tools import get_point_mapping, get_file_data, get_all_columns, DataMissing
@@ -71,7 +71,7 @@ class DataFormat:
         """
 
         return create_engine(
-            'mysql+pymysql://{}:{}@{}/{}?charset=utf8'.format(
+            'mysql+pymysql://{}:{}@{}/{}?charset=utf8mb4'.format(
                 self.conn_conf["user"],
                 self.conn_conf["password"],
                 "localhost",
@@ -122,6 +122,9 @@ class DataFormat:
             else:
                 df = df.reset_index()
             df = df.melt(id_vars=self.id_var, var_name=self.var_name)
+            if df["value"].dtype == "object":
+                df["value"].replace("\s*\[u\.\]\s*", "", regex=True, inplace=True)
+                df["value"] = df["value"].astype("float64")
             return df
         else:
             raise DataMissing("数据遗漏, 当前文件：{}".format(file))
@@ -211,6 +214,20 @@ class DataFormat:
                 return dfs.sort_values(by=self.id_var)
 
     def insert_to_sql(self, items, conn):
+        # items["value"].astype("float")
+        # print(items["value"])
+        # print("*" * 100)
+        # count = 1
+        # for item in items["value"].values:
+        #     print("<{} {} {}>".format(count, item, type(item)), end=" ")
+        #     if count % 100 == 0:
+        #         print()
+        #     count += 1
+        # print()
+        # print(np.isnan(items["value"].values))
+
+
+
         """
         上传至数据库
         :param conn: 数据库连接
@@ -225,9 +242,9 @@ class DataFormat:
                 if_exists='append',
                 index=False,
                 dtype={
-                    "time": DateTime,
+                    "Timestamp": DATETIME,
                     "pointname": VARCHAR(length=30),
-                    "value": FLOAT
+                    "value": DOUBLE
                 }
             )
             logging.info("完成所有数据上传")
