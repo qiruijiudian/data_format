@@ -150,6 +150,50 @@ def get_dtype(columns):
 
 def get_data_range():
     sql_conf = get_sql_conf(DB["query"])
+    sql_conf2 = get_sql_conf(DB["store"])
+    res = {}
+
+    with pymysql.connect(
+            host=sql_conf["host"],
+            user=sql_conf["user"],
+            password=sql_conf["password"],
+            database=sql_conf["database"]
+    ) as conn1:
+        cur1 = conn1.cursor()
+
+        context = {"cona": "time", "kamba": "Timestamp", "tianjin": "time"}
+        for k, v in context.items():
+            cur1.execute("select {} from {} order by {} asc limit 1;".format(v, k, v))
+            start = cur1.fetchone()
+            start = "" if not len(start) else start[0]
+            cur1.execute("select {} from {} order by {} desc limit 1;".format(v, k, v))
+            end = cur1.fetchone()
+            end = "" if not len(end) else end[0]
+
+            res[k] = {"start": start, "end": end}
+        cur1.close()
+
+    with pymysql.connect(
+            host=sql_conf2["host"],
+            user=sql_conf2["user"],
+            password=sql_conf2["password"],
+            database=sql_conf2["database"]
+    ) as conn2:
+        cur2 = conn2.cursor()
+        context2 = {"cona": "cona_days_data", "kamba": "kamba_days_data", "tianjin": "tianjin_days_data"}
+        for k, v in context2.items():
+            cur2.execute("select time_data from {} order by time_data desc limit 1;".format(v))
+            item = cur2.fetchone()
+            item = "" if not len(item) else item[0]
+            res[k]["latest"] = item
+        cur2.close()
+    print(res)
+
+
+
+
+def get_realtime_data_range():
+    sql_conf = get_sql_conf(DB["query"])
     with pymysql.connect(
             host=sql_conf["host"],
             user=sql_conf["user"],
@@ -171,7 +215,6 @@ def get_data_range():
                 end = "" if not len(end) else end[0]
 
                 res[k] = {"start": start, "end": end}
-            print(res)
 
         except Exception as e:
             traceback.print_exc()
@@ -265,33 +308,6 @@ def resample_data_by_hours(df, index, hours_op_dic):
     else:
         df = df.resample("h").mean()
     return df
-
-    # if 'cona' in db:
-    #
-    #     data = df.set_index(pd.to_datetime(df.index))
-    #     if len(hours_op_dic):
-    #         data = data.resample('h').agg(hours_op_dic)
-    #     else:
-    #         data = data.resample('h').mean()
-    #     return data
-    # elif 'kamba' in db:
-    #     data, point_lst = get_data(name, start, end, db)
-    #     data = data.set_index(pd.to_datetime(data.index))
-    #     if len(hours_op_dic):
-    #         if isinstance(hours_op_dic, dict):
-    #             data = data.resample('h').agg(hours_op_dic)
-    #         elif isinstance(hours_op_dic, list):
-    #             lst = [data for data in hours_op_dic if not isinstance(data, dict)]
-    #             dic = [data for data in hours_op_dic if isinstance(data, dict)]
-    #             _op_dic = dict(zip(point_lst, lst))
-    #             op_dic = {k: v for k, v in _op_dic.items() if v}
-    #             if dic:
-    #                 for _data in dic:
-    #                     op_dic.update(_data)
-    #             data = data.resample('h').agg(op_dic)
-    #     else:
-    #         data = data.resample('h').mean()
-    #     return data, point_lst
 
 
 def resample_data_by_days(df, index, just_date=False, hours_op_dic=None, days_op_dic=None):
@@ -604,4 +620,6 @@ volume = ['1031.370428', '1044.176354', '1057.061292', '1070.025243', '1083.0682
           '2214.799593', '2249.301815', '2284.070704', '2319.106259', '2354.408481', '2389.97737',
           '2425.812926', '2461.915148', '2498.284037', '840.8894115']
 
-get_data_range()
+if __name__ == '__main__':
+
+    get_data_range()

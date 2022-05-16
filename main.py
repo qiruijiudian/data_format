@@ -11,6 +11,7 @@ from sqlalchemy.dialects.mysql import DOUBLE, DATETIME, VARCHAR, FLOAT
 from configparser import ConfigParser
 from datetime import datetime, timedelta
 from tools import get_point_mapping, get_file_data, get_all_columns, DataMissing
+from data_calc import update_realtime_data
 
 
 class DataFormat:
@@ -214,20 +215,6 @@ class DataFormat:
                 return dfs.sort_values(by=self.id_var)
 
     def insert_to_sql(self, items, conn):
-        # items["value"].astype("float")
-        # print(items["value"])
-        # print("*" * 100)
-        # count = 1
-        # for item in items["value"].values:
-        #     print("<{} {} {}>".format(count, item, type(item)), end=" ")
-        #     if count % 100 == 0:
-        #         print()
-        #     count += 1
-        # print()
-        # print(np.isnan(items["value"].values))
-
-
-
         """
         上传至数据库
         :param conn: 数据库连接

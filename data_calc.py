@@ -128,7 +128,6 @@ def data_collation(block, start, end):
         heat_storage_heat = get_kamba_heat_storage_heat(start, end)
         com_cop = get_kamba_com_cop(start, end)
         wshp_cop = get_kamba_wshp_cop(start, end)
-        solar_collection = get_kamba_solar_collection(start, end)
         water_replenishment = get_kamba_water_replenishment(start, end)
         solar_matrix_supply_and_return_water_temperature = get_kamba_solar_matrix_supply_and_return_water_temperature(start, end)
         load = get_kamba_load(start, end)
@@ -143,7 +142,7 @@ def data_collation(block, start, end):
         res["pool_data"] = pool_temperature
 
         items = [
-            heat_storage_heat, com_cop, wshp_cop, solar_collection, water_replenishment,
+            heat_storage_heat, com_cop, wshp_cop, water_replenishment,
             solar_matrix_supply_and_return_water_temperature, load, end_supply_and_return_water_temp, calories,
             solar_heat_supply, heat_supply, cost_saving, co2_emission
         ]
@@ -173,35 +172,23 @@ def data_collation(block, start, end):
 
 
 def update_history_data():
-
-    start, end = "2020-08-17 00:00:00", "2022-05-10 23:59:59"
-    for block in ["kamba"]:
+    data_range = get_data_range()
+    for block in ["cona", "kamba"]:
+        start = "{} 00:00:00".format(data_range[block]["start"].strftime("%Y-%m-%d"))
+        end = "{} 23:59:59".format(data_range[block]["end"].strftime("%Y-%m-%d"))
         if block == "cona":
             items = data_collation(block, start, end)
             store_data(block, items)
         elif block == "kamba":
             items = data_collation(block, start, end)
-
             keys = ["hours_data", "days_data"]
-            for key in keys:
-                print("*" * 100)
-                print("start {}".format(key))
-                item = items[key]
-                for k, v in item.items():
-                    print(k, len(v))
-                print("*" * 100)
-
-            # # TODO load
-            # hours_data = items["hours_data"]
-            # days_data = items["days_data"]
-            # hours_data["time_data"] = [item.strftime("%Y-%m-%d %H:%M:%S") for item in hours_data["time_data"]]
-            # days_data["time_data"] = [item.strftime("%Y-%m-%d") for item in hours_data["time_data"]]
-            # with open("hours.json", "w", encoding="utf-8") as f:
-            #
-            #     f.write(json.dumps(hours_data, indent=4, ensure_ascii=False))
-            # with open("days.json", "w", encoding="utf-8") as f:
-            #     f.write(json.dumps(hours_data, indent=4, ensure_ascii=False))
-
+            # for key in keys:
+            #     print("*" * 100)
+            #     print("start {}".format(key))
+            #     item = items[key]
+            #     for k, v in item.items():
+            #         print(k, len(v))
+            #     print("*" * 100)
 
             pool_data = items.pop("pool_data")
             store_data(block, items)
@@ -211,6 +198,24 @@ def update_history_data():
             pool_dtype = {k: DOUBLE if k != "Timestamp" else DATETIME for k in hours_pool_df.columns}
             store_df_to_sql(hours_pool_df, "kamba_hours_pool_data", pool_dtype)
             store_df_to_sql(days_pool_df, "kamba_days_pool_data", pool_dtype)
+
+
+def update_realtime_data(block, start, end):
+    if block == "cona":
+        items = data_collation(block, start, end)
+        store_data(block, items)
+    elif block == "kamba":
+        items = data_collation(block, start, end)
+
+        pool_data = items.pop("pool_data")
+        store_data(block, items)
+
+        hours_pool_df = pd.DataFrame(pool_data["hours_data"])
+        days_pool_df = pd.DataFrame(pool_data["days_data"])
+        pool_dtype = {k: DOUBLE if k != "Timestamp" else DATETIME for k in hours_pool_df.columns}
+        store_df_to_sql(hours_pool_df, "kamba_hours_pool_data", pool_dtype)
+        store_df_to_sql(days_pool_df, "kamba_days_pool_data", pool_dtype)
+
 
 
 def store_data(block, items):
@@ -265,9 +270,6 @@ def store_df_to_sql(df, tb_name, d_type=None):
         traceback.print_exc()
     finally:
         engine.dispose()
-
-
-
 
 
 # **********************************************************************************************************************
@@ -1577,53 +1579,6 @@ def get_kamba_wshp_cop(start, end, block="kamba"):
 
 
 @log_hint
-def get_kamba_solar_collection(start, end, block="kamba"):
-    """岗巴 太阳能集热量
-    :param block: 隶属 错那数据
-    :param start: 开始时间
-    :param end: 结束时间
-    :return: 包含时数据和日数据的字典
-       time_data: 日期,
-       solar_collector:  太阳能集热量
-    """
-    result_df, point_lst = get_data("SOLAR_COLLECTOR", start, end, DB["query"], TB["query"][block])
-    result_df['solar_collector'] = result_df[point_lst[0]] * 4.186 * (
-            result_df[point_lst[1]] - result_df[point_lst[2]]
-    ) / 3.6
-    result_df = result_df.loc[:, ["Timestamp", "solar_collector"]]
-
-    hours_df = resample_data_by_hours(result_df, "Timestamp", {'solar_collector': 'mean'})
-
-    days_df = resample_data_by_days(result_df, "Timestamp", True, {}, {'solar_collector': 'mean'})
-
-    data = {
-        "hours_data": {
-            "time_data": [
-                datetime(
-                    year=item.year,
-                    month=item.month,
-                    day=item.day,
-                    hour=item.hour
-                ) for item in hours_df.index
-            ],
-            "solar_collector": hours_df["solar_collector"].values
-        },
-        "days_data": {
-            "time_data": [
-                datetime(
-                    year=item.year,
-                    month=item.month,
-                    day=item.day,
-                    hour=item.hour
-                ) for item in days_df.index
-            ],
-            "solar_collector": days_df["solar_collector"].values
-        }
-    }
-    return data
-
-
-@log_hint
 def get_kamba_water_replenishment(start, end, block="kamba"):
     """岗巴 补水量
     :param block: 隶属 错那数据
@@ -1978,19 +1933,25 @@ def get_kamba_solar_heat_supply(start, end, block="kamba"):
     result_df['IA'] = result_df[point_lst[4]] * 34.992
     _result_df = result_df[point_lst[5]] * 4.186 * (result_df[point_lst[6]] - result_df[point_lst[7]]) / 3.6
     result_df['IB'] = _result_df
+    result_df["flow_rate"] = result_df[point_lst[5]]
     # result_df[result_df < 0] = 0
-    result_df = result_df.loc[:, ["Timestamp", "HHWLoop_HeatLoad", "IB"]]
+    result_df = result_df.loc[:, ["Timestamp", "HHWLoop_HeatLoad", "IA", "IB", "flow_rate"]]
     result_df.loc[(result_df["IB"] < 0, "IB")] = 0
-    hours_df = resample_data_by_hours(result_df, "Timestamp", {'HHWLoop_HeatLoad': 'mean', 'IB': 'mean'})
+    hours_df = resample_data_by_hours(
+        result_df, "Timestamp",
+        {'HHWLoop_HeatLoad': 'mean', 'IB': 'mean', 'flow_rate': 'mean', 'IA': 'mean'}
+    )
     days_df = resample_data_by_days(
         result_df, "Timestamp", False,
-        {'HHWLoop_HeatLoad': 'mean', 'IB': 'mean'},
-        {'HHWLoop_HeatLoad': ['mean', "count"], 'IB': 'sum'}
+        {'HHWLoop_HeatLoad': 'mean', 'IB': 'mean', 'IA': 'mean', 'flow_rate': 'mean'},
+        {'HHWLoop_HeatLoad': ['mean', "count"], 'IB': 'sum', 'IA': 'sum', 'flow_rate': 'mean'}
     )
 
     days_solar_collector_heat = days_df["IB"]["sum"]
     days_heat_supply = days_df["HHWLoop_HeatLoad"]["mean"] * days_df["HHWLoop_HeatLoad"]["count"]
     days_rate = days_solar_collector_heat / days_heat_supply
+    days_heat_collection_efficiency = days_df["IB"]["sum"] / days_df["IA"]["sum"]
+
 
     data = {
         "hours_data": {
@@ -2002,8 +1963,10 @@ def get_kamba_solar_heat_supply(start, end, block="kamba"):
                     hour=item.hour
                 ) for item in hours_df.index
             ],
-            "solar_collector_heat": hours_df["HHWLoop_HeatLoad"].values,
+            "solar_collector": hours_df["HHWLoop_HeatLoad"].values,
+            "solar_radiation": hours_df["IA"].values,
             "heat_supply": hours_df["IB"].values,
+            "flow_rate": hours_df["flow_rate"].values
         },
         "days_data": {
             "time_data": [
@@ -2014,9 +1977,12 @@ def get_kamba_solar_heat_supply(start, end, block="kamba"):
                     hour=item.hour
                 ) for item in days_df.index
             ],
-            "solar_collector_heat": days_solar_collector_heat.values,
+            "solar_collector": days_solar_collector_heat.values,
             "heat_supply": days_heat_supply.values,
-            "rate": days_rate.values
+            "rate": days_rate.values,
+            "heat_collection_efficiency": days_heat_collection_efficiency.values,
+            "solar_radiation": days_df["IA"]["sum"].values,
+            "flow_rate": days_df["flow_rate"]["mean"].values
         }
     }
     return data
@@ -2075,7 +2041,7 @@ def get_kamba_heat_supply(start, end, block="kamba"):
     days_power_consume, count = pd.Series([]), 0
 
     for date, df in days_power:
-        if len(df.index) >=  2:
+        if len(df.index) >= 2:
             f_line = df.loc[df.index[0]]
             l_line = df.loc[df.index[-1]]
             diff = l_line - f_line
@@ -2316,6 +2282,4 @@ def get_kamba_pool_temperature(start, end, block="kamba"):
         "days_data": days_data
     }
 
-
-update_history_data()
 
