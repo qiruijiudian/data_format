@@ -436,3 +436,20 @@ CREATE TABLE kamba (
 2022-05-12 14:23:14,184 - F:/Git/files/github/data_format/main.py[line:361] - INFO: ===============     End 岗巴 数据解析完成 2022-05-12 14:23:14     ===============
 
 2022-05-12 14:23:14,184 - F:/Git/files/github/data_format/main.py[line:364] - INFO: ****************************************************************************************************
+2022-05-17 16:00:16,293 - F:/Git/files/github/data_format/main.py[line:65] - INFO: ****************************************************************************************************
+2022-05-17 16:00:16,322 - F:/Git/files/github/data_format/main.py[line:69] - INFO: ===============     Start 岗巴 数据解析开始 2022-05-17 16:00:16     ===============
+
+2022-05-17 16:00:18,148 - F:/Git/files/github/data_format/main.py[line:207] - INFO: 开始获取数据文件['./data/data/kamba\\2022.5.11.csv', './data/data/kamba\\2022.5.12.csv', './data/data/kamba\\2022.5.13.csv', './data/data/kamba\\2022.5.14.csv', './data/data/kamba\\2022.5.15.csv', './data/data/kamba\\2022.5.16.csv']
+2022-05-17 16:00:18,851 - F:/Git/files/github/data_format/main.py[line:214] - INFO: 数据全部获取完成2022-05-17 16:00:18
+2022-05-17 16:00:28,184 - F:/Git/files/github/data_format/main.py[line:237] - INFO: 完成所有数据上传
+2022-05-17 16:01:18,305 - F:/Git/files/github/data_format/main.py[line:284] - INFO: 数据备份已完成 表名：kamba，文件名：./data/backup/kamba/original\kamba_20220517.sql, 时间：2022-05-17 16:01:18
+2022-05-17 16:01:18,600 - F:/Git/files/github/data_format/main.py[line:339] - INFO: 数据解析异常，错误原因：'NoneType' object is not subscriptable, 当前时间：2022-05-17 16:01:18
+2022-05-17 16:01:18,601 - F:/Git/files/github/data_format/main.py[line:352] - INFO: ===============     End 岗巴 数据解析完成 2022-05-17 16:01:18     ===============
+
+2022-05-17 16:01:18,602 - F:/Git/files/github/data_format/main.py[line:355] - INFO: ****************************************************************************************************
+2022-05-17 16:07:37,020 - F:/Git/files/github/data_format/main.py[line:65] - INFO: ****************************************************************************************************
+2022-05-17 16:07:37,020 - F:/Git/files/github/data_format/main.py[line:69] - INFO: ===============     Start 岗巴 数据解析开始 2022-05-17 16:07:37     ===============
+
+2022-05-17 16:09:03,717 - F:/Git/files/github/data_format/main.py[line:359] - INFO: ===============     End 岗巴 数据解析完成 2022-05-17 16:09:03     ===============
+
+2022-05-17 16:09:03,718 - F:/Git/files/github/data_format/main.py[line:362] - INFO: ****************************************************************************************************

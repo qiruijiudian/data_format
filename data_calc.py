@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 # @Time    : 2022/5/5 17:09
 # @Author  : MAYA
+import os
 import random
 import pymysql
 import pandas as pd
@@ -12,7 +13,7 @@ from tools import resample_data_by_hours, resample_data_by_days, DB, TB, log_hin
     get_dtype, get_data, get_data_range, get_store_conn, get_sql_conf
 from sqlalchemy.dialects.mysql import DATETIME, DOUBLE
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import collections
 
 
@@ -172,6 +173,7 @@ def data_collation(block, start, end):
 
 
 def update_history_data():
+    """全部历史数据更新"""
     data_range = get_data_range()
     for block in ["cona", "kamba"]:
         start = "{} 00:00:00".format(data_range[block]["start"].strftime("%Y-%m-%d"))
@@ -200,13 +202,21 @@ def update_history_data():
             store_df_to_sql(days_pool_df, "kamba_days_pool_data", pool_dtype)
 
 
-def update_realtime_data(block, start, end):
+def update_realtime_data(block):
+    """分板块实时数据更新
+    :param block: 数据隶属，如：错那、岗巴
+    :return:
+    """
+    data_range = get_data_range()
+    latest_time = data_range[block]["latest"] + timedelta(days=1)
+    start = "{} 00:00:00".format(latest_time.strftime("%Y-%m-%d"))
+    end = "{} 23:59:59".format(data_range[block]["end"].strftime("%Y-%m-%d"))
+
     if block == "cona":
         items = data_collation(block, start, end)
         store_data(block, items)
     elif block == "kamba":
         items = data_collation(block, start, end)
-
         pool_data = items.pop("pool_data")
         store_data(block, items)
 
@@ -217,10 +227,8 @@ def update_realtime_data(block, start, end):
         store_df_to_sql(days_pool_df, "kamba_days_pool_data", pool_dtype)
 
 
-
 def store_data(block, items):
     """数据存储
-
     :param block: 数据隶属 如：cona、kamba、tianjin
     :param items: 数据集合
     """
@@ -270,6 +278,37 @@ def store_df_to_sql(df, tb_name, d_type=None):
         traceback.print_exc()
     finally:
         engine.dispose()
+
+
+def backup_statistics_data(block, backup_path):
+    sql_conf = get_sql_conf(DB["store"])
+    tables = {
+        "cona": ["cona_days_data", "cona_hours_data"],
+        "kamba": ["kamba_hours_data", "kamba_days_data", "kamba_days_pool_data", "kamba_hours_pool_data"],
+        "tianjin": []
+    }
+    now, num = datetime.today().strftime("%Y%m%d"), 1
+    name = os.path.join(backup_path, "{}_{}.sql".format(block, now))
+
+    while os.path.exists(name):
+        num += 1
+        name = os.path.join(backup_path, "{}_{}({}).sql".format(block, now, num))
+    backup_sql = "mysqldump -u{} -p{} {} {} > {}".format(
+        sql_conf["user"],
+        sql_conf["password"],
+        DB["store"],
+        " ".join(tables[block]),
+        name
+    )
+    os.system(backup_sql)
+    print("数据备份已完成 文件名：{}, 时间：{}".format(
+        name, datetime.today().strftime("%Y-%m-%d %H:%M:%S")
+    ))
+    # logging.info("数据备份已完成 表名：{}，文件名：{}, 时间：{}".format(
+    #     self.table_name, name, datetime.today().strftime("%Y-%m-%d %H:%M:%S")
+    # ))
+
+
 
 
 # **********************************************************************************************************************
@@ -2281,5 +2320,4 @@ def get_kamba_pool_temperature(start, end, block="kamba"):
         "hours_data": hours_data,
         "days_data": days_data
     }
-
 

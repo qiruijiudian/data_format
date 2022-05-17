@@ -6,12 +6,12 @@ import platform
 import traceback
 import numpy as np
 import pandas as pd
-from sqlalchemy import create_engine, Column
-from sqlalchemy.dialects.mysql import DOUBLE, DATETIME, VARCHAR, FLOAT
+from sqlalchemy import create_engine
+from sqlalchemy.dialects.mysql import DOUBLE, DATETIME, VARCHAR
 from configparser import ConfigParser
 from datetime import datetime, timedelta
 from tools import get_point_mapping, get_file_data, get_all_columns, DataMissing
-from data_calc import update_realtime_data
+from data_calc import update_realtime_data, backup_statistics_data
 
 
 class DataFormat:
@@ -44,8 +44,11 @@ class DataFormat:
         self.table_name = cfg.get('data', 'table_name').strip()  # 数据表名称
 
         # 备份目录
-        self.backup = cfg.get('data', 'backup').strip() if platform.system() == "Windows" else \
-            os.path.join("/home/data_format", cfg.get('data', 'backup').strip())
+        self.original_backup = cfg.get('data', 'original_backup').strip() if platform.system() == "Windows" else \
+            os.path.join("/home/data_format", cfg.get('data', 'original_backup').strip())
+
+        self.statistics_backup = cfg.get('data', 'statistics_backup').strip() if platform.system() == "Windows" else \
+            os.path.join("/home/data_format", cfg.get('data', 'statistics_backup').strip())
 
         self.sheet_range = cfg.get('data', 'sheet_range').strip()   # sheet表区间
         self.need_convert = int(cfg.get('data', 'need_convert').strip())   # 是否需要转换列名称
@@ -83,9 +86,6 @@ class DataFormat:
     def chart_to_data(self):
         """
         根据参数对照表返回字典数据
-        :param data: 说明文件
-        :param index: 中文索引
-        :param column: 英文说明
         :return: 返回字典数据，key和value分别对应 中文索引index 和 英文说明column
         """
         start, end = [int(data) for data in self.sheet_range.split('-')]
@@ -246,28 +246,28 @@ class DataFormat:
         today = datetime.today()
         expired_date = today - timedelta(days=60)
         res = []
+        for backup_type in [self.original_backup, self.statistics_backup]:
+            for file in os.listdir(backup_type):
+                dates_component = file.split("_")[1]
+                dates = dates_component[:8]
 
-        for file in os.listdir(self.backup):
-            dates_component = file.split("_")[1]
-            dates = dates_component[:8]
+                date = datetime.strptime(dates, "%Y%m%d")
+                if date < expired_date:
+                    os.remove(os.path.join(backup_type, file))
+                    res.append(file)
+            if res:
+                logging.info("已清除备份文件：", ", ".join(res))
 
-            date = datetime.strptime(dates, "%Y%m%d")
-            if date < expired_date:
-                os.remove(os.path.join(self.backup, file))
-                res.append(file)
-        if res:
-            logging.info("已清除备份文件：", ", ".join(res))
-
-    def table_backup(self):
+    def original_table_backup(self):
         """数据备份，每次数据存储执行完成后会进行备份，将数据导出成sql文件
 
         """
         now, num = datetime.today().strftime("%Y%m%d"), 1
-        name = os.path.join(self.backup, "{}_{}.sql".format(self.table_name, now))
+        name = os.path.join(self.original_backup, "{}_{}.sql".format(self.table_name, now))
 
         while os.path.exists(name):
             num += 1
-            name = os.path.join(self.backup, "{}_{}({}).sql".format(self.table_name, now, num))
+            name = os.path.join(self.original_backup, "{}_{}({}).sql".format(self.table_name, now, num))
 
         backup_sql = "mysqldump -u{} -p{} {} {} > {}".format(
             self.conn_conf["user"],
@@ -315,11 +315,17 @@ class DataFormat:
                     "岗巴" if "kamba" in self.table_name else "错那" if "cona" in self.table_name else "天津"
                 )
             )
+
             if not success.strip():
                 items = self.get_data()
                 if self.insert_to_sql(items, engine):
-                    self.table_backup() # 备份
-                    self.clear_backup() # 清除备份
+                    self.original_table_backup()  # 备份
+
+                    update_realtime_data(self.table_name)   # 公式计算
+
+                    backup_statistics_data(self.table_name, self.statistics_backup)  # 计算值备份
+
+                    self.clear_backup()  # 清除备份
                     self.file_clear()   # 清除数据文件
             else:
                 logging.info(
