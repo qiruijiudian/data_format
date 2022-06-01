@@ -10,7 +10,7 @@ import logging
 import traceback
 import numpy as np
 from tools import resample_data_by_hours, resample_data_by_days, DB, TB, log_hint, check_time, \
-    get_dtype, get_data, get_data_range, get_store_conn, get_sql_conf
+    get_dtype, get_data, get_data_range, get_store_conn, get_sql_conf, VOLUME
 from sqlalchemy.dialects.mysql import DATETIME, DOUBLE
 
 from datetime import datetime, timedelta
@@ -27,27 +27,6 @@ def data_collation(block, start, end):
     }
     print("{} 数据获取 开始".format(block))
     if block == "cona":
-        # items = {
-        #     "地热井提供热量": {"high_temp_plate_exchange_heat_production": "高温版换制热量",
-        #                 "water_heat_pump_heat_production": "水源热泵制热量",
-        #                 "geothermal_wells_high_heat_provide": "地热井可提供高温热量",
-        #                 "geothermal_wells_low_heat_provide": "地热井可提供低温热量", },
-        #     "综合COP": {"com_cop": "COP能效"},
-        #     "供暖费用": {"cost_saving": "供暖费用", "high_temp_charge": "高温供暖费用", "low_temp_charge": "低温供暖费用"},
-        #     "供热量": {"heat_well_heating": "热力井供热", "heat_pipe_network_heating": "热力管网供热",
-        #             "water_heat_pump_heat_production": "水源热泵供热", "high_temp_plate_exchange_heat_production": "高温板换供热",
-        #             "max_load": "最大负荷", "min_load": "最小负荷", "avg_load": "平均负荷", },
-        #     "供回水温度": {"water_supply_temperature": "供水温度", "return_water_temperature": "回水温度",
-        #               "supply_return_water_temp_diff": "供回水温差"},
-        #     "补水量": {"water_replenishment": "补水量", "water_replenishment_limit": "补水量限值"},
-        #     "机房综合COP能效": {"f2_cop": "2号机房综合COP", "f3_cop": "3号机房综合COP", "f4_cop": "4号机房综合COP", "f5_cop": "5号机房综合COP"},
-        #     "机房水源热泵COP能效": {"f2_whp_cop": "2号机房水源热泵COP", "f3_whp_cop": "3号机房水源热泵COP", "f4_whp_cop": "4号机房水源热泵COP",
-        #                     "f5_whp_cop": "5号机房水源热泵COP"},
-        #     "机房管网供水温度": {"f2_HHWLoop001_ST": "2号机房支路1供水温度", "f3_HHWLoop001_ST": "3号机房支路1供水温度",
-        #                  "f3_HHWLoop002_ST": "3号机房支路2供水温度", "f3_HHWLoop003_ST": "3号机房支路3供水温度",
-        #                  "f4_HHWLoop001_ST": "4号机房支路1供水温度", "f5_HHWLoop001_ST": "5号机房支路1供水温度", },
-        #     "日平均温度列表": {}
-        # }
         geothermal_wells_heat_provide = get_cona_geothermal_wells_heat_provide(start, end)
         com_cop = get_cona_com_cop(start, end)
         cost_saving = get_cona_cost_saving(start, end)
@@ -99,33 +78,6 @@ def data_collation(block, start, end):
             print("数据获取异常")
             exit()
     elif block == "kamba":
-        # 岗巴统计内容
-        # items = {
-        #     "蓄热水池可用热量": {"low_heat_total": "蓄热水池可用低温热量", "high_heat_total": "蓄热水池可用高温热量",
-        #                  "heat_supply_days": "电锅炉可替换供热天数"},
-        #     "系统COP": {"cop": "系统综合COP能效"},
-        #     "水源热泵COP": {"wshp_cop": "水源热泵COP能效"},
-        #     "太阳能集热量": {"solar_collector": "太阳能集热量"},
-        #     "补水量": {"heat_water_replenishment": "补水量", "heat_water_replenishment_limit": "补水量限值"},
-        #     "太阳能矩阵供回水温度": {"solar_matrix_supply_water_temp": "太阳能矩阵供水温度",
-        #                    "solar_matrix_return_water_temp": "太阳能矩阵回水温度"},
-        #     "负荷": {"max_load": "最大负荷", "min_load": "最小负荷", "avg_load": "平均负荷"},
-        #     "末端供回水温度与温差": {"end_supply_water_temp": "末端供水温度", "end_return_water_temp": "末端回水温度",
-        #                    "end_return_water_temp_diff": "末端供回水温差", "temp": "平均温度"},
-        #     "供热分析": {
-        #         "hours_data": {"high_temperature_plate_exchange_heat": "高温板换制热量", "wshp_heat": "水源热泵制热量",
-        #                        "high_temperature_plate_exchange_heat_rate": "高温板换制热功率"},
-        #         "days_data": {"high_temperature_plate_exchange_heat": "高温板换制热总量", "wshp_heat": "水源热泵制热总量"}
-        #     },
-        #     "太阳能集热分析": {
-        #         "hours_data": {"solar_collector_heat": "太阳能集热量", "heat_supply": "供热量"},
-        #         "days_data": {"solar_collector_heat": "太阳能集热量", "heat_supply": "供热量", "rate": "短期太阳能保证率"}
-        #     },
-        #     "制热量情况": {"rate": "供热率", "heat_supply": "供热量", "power_consume": "水源热泵耗电量"},
-        #     "节省电费": {"cost_saving": "节省电费", "power_consumption": "耗电量"},
-        #     "co2减排量": {"power_consume": "耗电量", "co2_emission_reduction": "co2减排量", "co2_equal_num": "等效种植数目数量"},
-        #     "水池温度": {"hours_data": "各水池时平均温度字典", "days_data": "各水池日平均温度字典"}
-        # }
         heat_storage_heat = get_kamba_heat_storage_heat(start, end)
         com_cop = get_kamba_com_cop(start, end)
         wshp_cop = get_kamba_wshp_cop(start, end)
@@ -148,7 +100,6 @@ def data_collation(block, start, end):
             solar_heat_supply, heat_supply, cost_saving, co2_emission
         ]
         success, hours_time, days_time = check_time(items)
-        print(success)
 
         for item in items:
             for key in ["hours_data", "days_data"]:
@@ -168,14 +119,35 @@ def data_collation(block, start, end):
         else:
             print("数据获取异常")
             exit()
+    elif block == "tianjin":
+        fan_frequency = get_fan_frequency(start, end)
+        cold_water_valve = get_cold_water_valve(start, end)
+        hot_water_valve = get_hot_water_valve(start, end)
+        air_supply_pressure = get_air_supply_pressure(start, end)
+        air_supply_humidity = get_air_supply_humidity(start, end)
+        air_supply_temperature = get_air_supply_temperature(start, end)
+        items = [
+            fan_frequency,
+            cold_water_valve,
+            hot_water_valve,
+            air_supply_pressure,
+            air_supply_humidity,
+            air_supply_temperature
+        ]
+        res = {}
+        for item in items:
+            res.update(item)
     print("{} 数据获取 完成".format(block))
     return res
 
 
-def update_history_data():
+def update_history_data(blocks=None):
     """全部历史数据更新"""
-    data_range = get_data_range()
-    for block in ["cona", "kamba"]:
+    if not blocks:
+        blocks = ["cona", "kamba", "天津"]
+
+    data_range = get_data_range("history")
+    for block in blocks:
         start = "{} 00:00:00".format(data_range[block]["start"].strftime("%Y-%m-%d"))
         end = "{} 23:59:59".format(data_range[block]["end"].strftime("%Y-%m-%d"))
         if block == "cona":
@@ -183,15 +155,6 @@ def update_history_data():
             store_data(block, items)
         elif block == "kamba":
             items = data_collation(block, start, end)
-            keys = ["hours_data", "days_data"]
-            # for key in keys:
-            #     print("*" * 100)
-            #     print("start {}".format(key))
-            #     item = items[key]
-            #     for k, v in item.items():
-            #         print(k, len(v))
-            #     print("*" * 100)
-
             pool_data = items.pop("pool_data")
             store_data(block, items)
 
@@ -200,6 +163,11 @@ def update_history_data():
             pool_dtype = {k: DOUBLE if k != "Timestamp" else DATETIME for k in hours_pool_df.columns}
             store_df_to_sql(hours_pool_df, "kamba_hours_pool_data", pool_dtype)
             store_df_to_sql(days_pool_df, "kamba_days_pool_data", pool_dtype)
+        elif block == "tianjin":
+            items = data_collation(block, start, end)
+            data_dtype = get_dtype(items.keys())
+            df = pd.DataFrame(items)
+            store_df_to_sql(df, TB["store"][block], data_dtype)
 
 
 def update_realtime_data(block):
@@ -207,7 +175,7 @@ def update_realtime_data(block):
     :param block: 数据隶属，如：错那、岗巴
     :return:
     """
-    data_range = get_data_range()
+    data_range = get_data_range("realtime")
     latest_time = data_range[block]["latest"] + timedelta(days=1)
     start = "{} 00:00:00".format(latest_time.strftime("%Y-%m-%d"))
     end = "{} 23:59:59".format(data_range[block]["end"].strftime("%Y-%m-%d"))
@@ -225,15 +193,23 @@ def update_realtime_data(block):
         pool_dtype = {k: DOUBLE if k != "Timestamp" else DATETIME for k in hours_pool_df.columns}
         store_df_to_sql(hours_pool_df, "kamba_hours_pool_data", pool_dtype)
         store_df_to_sql(days_pool_df, "kamba_days_pool_data", pool_dtype)
+    elif block == "tianjin":
+
+        items = data_collation(block, start, end)
+        data_dtype = get_dtype(items.keys())
+        df = pd.DataFrame(items)
+        store_df_to_sql(df, TB["store"][block], data_dtype)
 
 
 def store_data(block, items):
     """数据存储
     :param block: 数据隶属 如：cona、kamba、tianjin
     :param items: 数据集合
+    :param directly: 是否直接存储数据
     """
 
     engine = get_store_conn()
+
     hours_data, days_data = items["hours_data"], items["days_data"]
 
     try:
@@ -254,7 +230,6 @@ def store_data(block, items):
         days_df.to_sql(name=TB["store"][block]["days"], con=engine, if_exists="append", index=False, dtype=days_dtype)
         # logging.info("完成 {} - {} 上传".format(block, "日数据"))
         print("完成 {} - {} 上传".format(block, "日数据"))
-
     except Exception as e:
         logging.error("数据上传异常")
         traceback.print_exc()
@@ -307,8 +282,6 @@ def backup_statistics_data(block, backup_path):
     # logging.info("数据备份已完成 表名：{}，文件名：{}, 时间：{}".format(
     #     self.table_name, name, datetime.today().strftime("%Y-%m-%d %H:%M:%S")
     # ))
-
-
 
 
 # **********************************************************************************************************************
@@ -1390,13 +1363,6 @@ def get_kamba_heat_storage_heat(start, end, block="kamba"):
    """
     data = {}
     result_df, point_lst = get_data("ALL_LEVEL_TEMP", start, end, DB["query"], TB["query"][block])
-    volume = ['1031.370428', '1044.176354', '1057.061292', '1070.025243', '1083.068206', '1096.190181',
-              '1109.391169', '1122.671169', '1136.030181', '1149.468206', '1162.985243', '1176.581292',
-              '1190.256354', '1204.010428', '1217.843514', '1231.755613', '1245.746724', '1259.816848',
-              '1273.965984', '1288.194132', '1302.501292', '1316.887465', '1331.35265', '1367.861292',
-              '1382.603021', '1397.423761', '1412.323514', '2024.324037', '2146.595148', '2180.564037',
-              '2214.799593', '2249.301815', '2284.070704', '2319.106259', '2354.408481', '2389.97737',
-              '2425.812926', '2461.915148', '2498.284037', '840.8894115']
     result_df = result_df.set_index(pd.to_datetime(result_df["Timestamp"]))
 
     columns = result_df.columns
@@ -1407,46 +1373,53 @@ def get_kamba_heat_storage_heat(start, end, block="kamba"):
     days_df = result_df.resample('D')
 
     days_high_heat, days_low_heat, days_time_data, days_low_heat_total, days_high_heat_total = [], [], [], [], []
+    days_high_df, days_low_df = pd.DataFrame(), pd.DataFrame()
     for point_index, point_item in enumerate(point_lst):
         days_heat_data = days_df[point_item].mean()
+        if not days_time_data:
+            days_time_data = [datetime(year=item.year, month=item.month, day=item.day) for item in days_heat_data.index]
 
         tmp_high, tmp_low = [], []
         for heat_index in days_heat_data.index:
-            _high_heat = (days_heat_data[heat_index] - 45) * float(volume[point_index]) * 4.186 / 3.6
+            _high_heat = (days_heat_data[heat_index] - 45) * VOLUME[point_index] * 4.186 / 3.6
             tmp_high.append(_high_heat)
-            tmp_low.append((days_heat_data[heat_index] - 10) * float(volume[point_index]) * 4.186 / 3.6 - _high_heat)
+            tmp_low.append((days_heat_data[heat_index] - 10) * VOLUME[point_index] * 4.186 / 3.6 - _high_heat)
         days_high_heat.append(tmp_high)
         days_low_heat.append(tmp_low)
 
-        if not days_time_data:
-            days_time_data = [datetime(year=item.year, month=item.month, day=item.day) for item in days_heat_data.index]
+        if "time_data" not in days_high_df.columns or "time_data" not in days_low_df.columns:
+            days_high_df["time_data"] = days_time_data
+            days_low_df["time_data"] = days_time_data
+        days_high_df[point_item] = tmp_high
+        days_low_df[point_item] = tmp_low
+    days_low_heat_of_storage = days_low_df.loc[:, point_lst].sum(axis=1)
+    days_high_heat_of_storage = days_high_df.loc[:, point_lst].sum(axis=1)
+
+    days_sum_heat_of_storage = days_low_heat_of_storage + days_high_heat_of_storage
 
     for time_index in range(len(days_time_data)):
         days_low_heat_total.append(sum([item[time_index] for item in days_low_heat]))
         days_high_heat_total.append(sum([item[time_index] for item in days_high_heat]))
-    days_heat_supply_days = [item / 2000 / 2400 for item in days_high_heat_total]
+    # days_heat_supply_days = [item / 2000 / 2400 for item in days_high_heat_total]
+    days_heat_supply_days = [item / 2000 / 2400 for item in days_high_heat_of_storage.values]
+
+    print(days_low_heat_total)
 
     data["days_data"] = {
         "time_data": days_time_data,
-        "low_heat_total": days_low_heat_total,
-        "high_heat_total": days_high_heat_total,
-        "heat_supply_days": days_heat_supply_days
+        # "low_heat_total": days_low_heat_total,
+        # "high_heat_total": days_high_heat_total,
+        "heat_supply_days": days_heat_supply_days,
+        "low_heat_of_storage": days_low_heat_of_storage.values,
+        "high_heat_of_storage": days_high_heat_of_storage.values,
+        "sum_heat_of_storage": days_sum_heat_of_storage.values,
     }
-
 
     hours_df = result_df.resample("h")
     hours_high_heat, hours_low_heat, hours_time_data, hours_low_heat_total, hours_high_heat_total = [], [], [], [], []
+    hours_high_df, hours_low_df = pd.DataFrame(), pd.DataFrame()
     for point_index, point_item in enumerate(point_lst):
         hours_heat_data = hours_df[point_item].mean()
-
-        tmp_high, tmp_low = [], []
-        for heat_index in hours_heat_data.index:
-            _high_heat = (hours_heat_data[heat_index] - 45) * float(volume[point_index]) * 4.186 / 3.6
-            tmp_high.append(_high_heat)
-            tmp_low.append((hours_heat_data[heat_index] - 10) * float(volume[point_index]) * 4.186 / 3.6 - _high_heat)
-        hours_high_heat.append(tmp_high)
-        hours_low_heat.append(tmp_low)
-
         if not hours_time_data:
             hours_time_data = [
                 datetime(
@@ -1457,16 +1430,57 @@ def get_kamba_heat_storage_heat(start, end, block="kamba"):
                 ) for item in hours_heat_data.index
             ]
 
+        tmp_high, tmp_low = [], []
+        for heat_index in hours_heat_data.index:
+            _high_heat = (hours_heat_data[heat_index] - 45) * VOLUME[point_index] * 4.186 / 3.6
+            tmp_high.append(_high_heat)
+            tmp_low.append((hours_heat_data[heat_index] - 10) * VOLUME[point_index] * 4.186 / 3.6 - _high_heat)
+        hours_high_heat.append(tmp_high)
+        hours_low_heat.append(tmp_low)
+        if "time_data" not in hours_high_df.columns or "time_data" not in hours_low_df.columns:
+            hours_high_df["time_data"] = hours_time_data
+            hours_low_df["time_data"] = hours_time_data
+        hours_high_df[point_item] = tmp_high
+        hours_low_df[point_item] = tmp_low
+
+    hours_low_heat_of_storage = hours_low_df.loc[:, point_lst].sum(axis=1)
+    hours_high_heat_of_storage = hours_high_df.loc[:, point_lst].sum(axis=1)
+    hours_sum_heat_of_storage = hours_low_heat_of_storage + hours_high_heat_of_storage
+
     for time_index in range(len(hours_time_data)):
         hours_low_heat_total.append(sum([item[time_index] for item in hours_low_heat]))
         hours_high_heat_total.append(sum([item[time_index] for item in hours_high_heat]))
-    hours_heat_supply_days = [item / 2000 / 2400 for item in hours_high_heat_total]
+    # hours_heat_supply_days = [item / 2000 / 2400 for item in hours_high_heat_total]
+    hours_heat_supply_days = [item / 2000 / 2400 for item in hours_high_heat_of_storage.values]
     data["hours_data"] = {
         "time_data": hours_time_data,
-        "low_heat_total": hours_low_heat_total,
-        "high_heat_total": hours_high_heat_total,
-        "heat_supply_days": hours_heat_supply_days
+        # "low_heat_total": hours_low_heat_total,
+        # "high_heat_total": hours_high_heat_total,
+        "heat_supply_days": hours_heat_supply_days,
+        "low_heat_of_storage": hours_low_heat_of_storage.values,
+        "high_heat_of_storage": hours_high_heat_of_storage.values,
+        "sum_heat_of_storage": hours_sum_heat_of_storage.values,
     }
+
+    agg_dic = {k: "mean" for k in result_df.columns if k != "Timestamp"}
+    volume_sum = sum(VOLUME)
+    hours_pool_temp_df = resample_data_by_hours(result_df, "Timestamp", agg_dic)
+    hours_pool_temp = []
+    for pool_index in hours_pool_temp_df.index:
+        tmp = 0
+        for point_index, point in enumerate(point_lst):
+            tmp += hours_pool_temp_df.loc[pool_index, point] * VOLUME[point_index]
+        hours_pool_temp.append(tmp / volume_sum)
+    data["hours_data"]["avg_pool_temperature"] = hours_pool_temp
+
+    days_pool_temp_df = resample_data_by_days(result_df, "Timestamp", True, {}, agg_dic)
+    days_pool_temp = []
+    for pool_index in days_pool_temp_df.index:
+        tmp = 0
+        for point_index, point in enumerate(point_lst):
+            tmp += days_pool_temp_df.loc[pool_index, point] * VOLUME[point_index]
+        days_pool_temp.append(tmp / volume_sum)
+    data["days_data"]["avg_pool_temperature"] = days_pool_temp
 
     return data
 
@@ -1667,7 +1681,10 @@ def get_kamba_water_replenishment(start, end, block="kamba"):
                 ) for item in hours_df.index
             ],
             "heat_water_replenishment": hours_df[point_lst[0]].values,
-            "heat_water_replenishment_limit": hours_df["heat_water_replenishment_limit"].values
+            "heat_water_replenishment_limit": hours_df["heat_water_replenishment_limit"].values,
+            "heat_storage_tank_replenishment": hours_df[point_lst[3]].values,
+            "solar_side_replenishment": hours_df[point_lst[4]].values,
+            "solar_side_replenishment_limit": hours_df[point_lst[5]].values
         },
         "days_data": {
             "time_data": [
@@ -1679,7 +1696,10 @@ def get_kamba_water_replenishment(start, end, block="kamba"):
                 ) for item in days_df.index
             ],
             "heat_water_replenishment": days_df[point_lst[0]].values,
-            "heat_water_replenishment_limit": days_df["heat_water_replenishment_limit"].values
+            "heat_water_replenishment_limit": days_df["heat_water_replenishment_limit"].values,
+            "heat_storage_tank_replenishment": days_df[point_lst[3]].values,
+            "solar_side_replenishment": days_df[point_lst[4]].values,
+            "solar_side_replenishment_limit": days_df[point_lst[5]].values
         }
     }
     return data
@@ -1747,21 +1767,33 @@ def get_kamba_load(start, end, block="kamba"):
     result_df['HHWLoop_HeatLoad'] = (result_df[point_lst[0]] - result_df[point_lst[1]]) * 4.186 * (
             result_df[point_lst[2]] - result_df[point_lst[3]]
     ) / 3.6
-    result_df = result_df.loc[:, ["Timestamp", "HHWLoop_HeatLoad"]]
+    result_df["heat_pipe_network_flow_rate"] = result_df[point_lst[0]] = result_df[point_lst[1]]
+    # result_df = result_df.loc[:, ["Timestamp", "HHWLoop_HeatLoad", "heat_pipe_network_flow_rate"]]
 
     hours_df = resample_data_by_hours(
         result_df, "Timestamp",
         {
-            'HHWLoop_HeatLoad': ['max', 'min', 'mean']
+            'HHWLoop_HeatLoad': ['max', 'min', 'mean'],
+            point_lst[2]: "mean",
+            point_lst[3]: "mean",
+            "heat_pipe_network_flow_rate": "mean"
         }
     )
 
     days_df = resample_data_by_days(
         result_df, "Timestamp",
         False,
-        {'HHWLoop_HeatLoad': 'mean'},
         {
-            'HHWLoop_HeatLoad': ['max', 'min', 'mean']
+            'HHWLoop_HeatLoad': "mean",
+            point_lst[2]: "mean",
+            point_lst[3]: "mean",
+            "heat_pipe_network_flow_rate": "mean"
+        },
+        {
+            'HHWLoop_HeatLoad': ['max', 'min', 'mean'],
+            point_lst[2]: "mean",
+            point_lst[3]: "mean",
+            "heat_pipe_network_flow_rate": "mean"
         }
     )
 
@@ -1777,7 +1809,10 @@ def get_kamba_load(start, end, block="kamba"):
             ],
             "max_load": hours_df["HHWLoop_HeatLoad"]["max"].values,
             "min_load": hours_df["HHWLoop_HeatLoad"]["min"].values,
-            "avg_load": hours_df["HHWLoop_HeatLoad"]["mean"].values
+            "avg_load": hours_df["HHWLoop_HeatLoad"]["mean"].values,
+            "heating_network_water_supply_temperature": hours_df[point_lst[2]]["mean"].values,
+            "heating_network_water_return_temperature": hours_df[point_lst[3]]["mean"].values,
+            "heat_pipe_network_flow_rate": hours_df["heat_pipe_network_flow_rate"]["mean"].values
         },
         "days_data": {
             "time_data": [
@@ -1790,7 +1825,10 @@ def get_kamba_load(start, end, block="kamba"):
             ],
             "max_load": days_df["HHWLoop_HeatLoad"]["max"].values,
             "min_load": days_df["HHWLoop_HeatLoad"]["min"].values,
-            "avg_load": days_df["HHWLoop_HeatLoad"]["mean"].values
+            "avg_load": days_df["HHWLoop_HeatLoad"]["mean"].values,
+            "heating_network_water_supply_temperature": days_df[point_lst[2]]["mean"].values,
+            "heating_network_water_return_temperature": days_df[point_lst[3]]["mean"].values,
+            "heat_pipe_network_flow_rate": days_df["heat_pipe_network_flow_rate"]["mean"].values
         }
     }
     return data
@@ -1972,25 +2010,49 @@ def get_kamba_solar_heat_supply(start, end, block="kamba"):
     result_df['IA'] = result_df[point_lst[4]] * 34.992
     _result_df = result_df[point_lst[5]] * 4.186 * (result_df[point_lst[6]] - result_df[point_lst[7]]) / 3.6
     result_df['IB'] = _result_df
-    result_df["flow_rate"] = result_df[point_lst[5]]
+    result_df["collector_system_flow_rate"] = result_df[point_lst[5]]
     # result_df[result_df < 0] = 0
-    result_df = result_df.loc[:, ["Timestamp", "HHWLoop_HeatLoad", "IA", "IB", "flow_rate"]]
+    # result_df = result_df.loc[:, ["Timestamp", "HHWLoop_HeatLoad", "IA", "IB", "collector_system_flow_rate"]]
     result_df.loc[(result_df["IB"] < 0, "IB")] = 0
     hours_df = resample_data_by_hours(
         result_df, "Timestamp",
-        {'HHWLoop_HeatLoad': 'mean', 'IB': 'mean', 'flow_rate': 'mean', 'IA': 'mean'}
+        {
+            'HHWLoop_HeatLoad': 'mean',
+            'IB': 'mean',
+            'collector_system_flow_rate': 'mean',
+            'IA': 'mean',
+            point_lst[6]: "mean",
+            point_lst[7]: "mean"
+        }
     )
+
+    hours_total_solar_radiation = hours_df["IA"] * 34.992
+
     days_df = resample_data_by_days(
         result_df, "Timestamp", False,
-        {'HHWLoop_HeatLoad': 'mean', 'IB': 'mean', 'IA': 'mean', 'flow_rate': 'mean'},
-        {'HHWLoop_HeatLoad': ['mean', "count"], 'IB': 'sum', 'IA': 'sum', 'flow_rate': 'mean'}
+        {
+            'HHWLoop_HeatLoad': 'mean',
+            'IB': 'mean',
+            'IA': 'mean',
+            'collector_system_flow_rate': 'mean',
+            point_lst[6]: "mean",
+            point_lst[7]: "mean"
+        },
+        {
+            'HHWLoop_HeatLoad': ['mean', "count"],
+            'IB': 'sum',
+            'IA': 'sum',
+            'collector_system_flow_rate': 'mean',
+            point_lst[6]: "mean",
+            point_lst[7]: "mean"
+        }
     )
 
     days_solar_collector_heat = days_df["IB"]["sum"]
     days_heat_supply = days_df["HHWLoop_HeatLoad"]["mean"] * days_df["HHWLoop_HeatLoad"]["count"]
     days_rate = days_solar_collector_heat / days_heat_supply
     days_heat_collection_efficiency = days_df["IB"]["sum"] / days_df["IA"]["sum"]
-
+    days_total_solar_radiation = days_df["IA"]["sum"] * 34.992
 
     data = {
         "hours_data": {
@@ -2002,10 +2064,14 @@ def get_kamba_solar_heat_supply(start, end, block="kamba"):
                     hour=item.hour
                 ) for item in hours_df.index
             ],
-            "solar_collector": hours_df["HHWLoop_HeatLoad"].values,
+            # "solar_collector": hours_df["HHWLoop_HeatLoad"].values,
+            "solar_collector": hours_df["IB"].values,
             "solar_radiation": hours_df["IA"].values,
+            "total_solar_radiation": hours_total_solar_radiation.values,
             "heat_supply": hours_df["IB"].values,
-            "flow_rate": hours_df["flow_rate"].values
+            "flow_rate": hours_df["collector_system_flow_rate"].values,
+            "heat_collection_system_water_supply_temperature": hours_df[point_lst[6]].values,
+            "heat_collection_system_water_return_temperature": hours_df[point_lst[7]].values
         },
         "days_data": {
             "time_data": [
@@ -2018,10 +2084,13 @@ def get_kamba_solar_heat_supply(start, end, block="kamba"):
             ],
             "solar_collector": days_solar_collector_heat.values,
             "heat_supply": days_heat_supply.values,
-            "rate": days_rate.values,
+            "heating_guarantee_rate": days_rate.values,
             "heat_collection_efficiency": days_heat_collection_efficiency.values,
             "solar_radiation": days_df["IA"]["sum"].values,
-            "flow_rate": days_df["flow_rate"]["mean"].values
+            "total_solar_radiation": days_total_solar_radiation.values,
+            "flow_rate": days_df["collector_system_flow_rate"]["mean"].values,
+            "heat_collection_system_water_supply_temperature": days_df[point_lst[6]]["mean"].values,
+            "heat_collection_system_water_return_temperature": days_df[point_lst[7]]["mean"].values
         }
     }
     return data
@@ -2092,6 +2161,7 @@ def get_kamba_heat_supply(start, end, block="kamba"):
     days_rate = (days_avg_loads - days_power_consume) / days_avg_loads
     days_heat_supply = days_avg_loads
 
+
     data = {
         "hours_data": {
             "time_data": [
@@ -2102,8 +2172,8 @@ def get_kamba_heat_supply(start, end, block="kamba"):
                     hour=item.hour
                 ) for item in hours_load.index
             ],
-            "rate": hours_rate.replace([np.inf, -np.inf], np.nan).values,
-            "heat_supply": hours_heat_supply,
+            "heat_supply_rate": hours_rate.replace([np.inf, -np.inf], np.nan).values,
+            # "heat_supply": hours_heat_supply,
             "power_consume": hours_power_consume.values
         },
         "days_data": {
@@ -2115,8 +2185,8 @@ def get_kamba_heat_supply(start, end, block="kamba"):
                     hour=item.hour
                 ) for item in days_load.index
             ],
-            "rate": days_rate.replace([np.inf, -np.inf], np.nan).values,
-            "heat_supply": days_heat_supply,
+            "heat_supply_rate": days_rate.replace([np.inf, -np.inf], np.nan).values,
+            # "heat_supply": days_heat_supply,
             "power_consume": days_power_consume.values
         }
     }
@@ -2276,13 +2346,13 @@ def get_kamba_co2_emission(start, end, block="kamba"):
     data = {
         "hours_data": {
             "time_data": list(hours_consume_items.keys()),
-            "power_consume": hours_power_consume,
+            "co2_power_consume": hours_power_consume,
             "co2_emission_reduction": hours_co2_emission_reduction,
             "co2_equal_num": hours_co2_equal_num
         },
         "days_data": {
             "time_data": list(days_consume_items.keys()),
-            "power_consume": days_power_consume,
+            "co2_power_consume": days_power_consume,
             "co2_emission_reduction": days_co2_emission_reduction,
             "co2_equal_num": days_co2_equal_num
         }
@@ -2321,3 +2391,179 @@ def get_kamba_pool_temperature(start, end, block="kamba"):
         "days_data": days_data
     }
 
+# **********************************************************************************************************************
+# **********************************************************************************************************************
+
+
+# **********************************************  天津 统计项目  *********************************************************
+
+@log_hint
+def get_fan_frequency(start, end, block="tianjin"):
+    result_df = get_data("FAN_FREQUENCY", start, end, DB["query"], TB["query"][block])
+    result_df = result_df / 50
+    data = {
+        "time_data": [
+            datetime(
+                year=item.year, month=item.month, day=item.day, hour=item.hour, minute=item.minute, second=item.second
+            ) for item in result_df.index
+        ],
+        "fan_frequency_201": result_df["MAU-201-HZ-V"].values,
+        "fan_frequency_202": result_df["MAU-202-HZ-V"].values,
+        "fan_frequency_203": result_df["MAU-203-HZ-V"].values,
+        "fan_frequency_301": result_df["MAU-301-HZ-V"].values,
+        "fan_frequency_401": result_df["MAU-401-HZ-V"].values
+    }
+    return data
+
+
+@log_hint
+def get_cold_water_valve(start, end, block="tianjin"):
+    result_df = get_data("COLD_WATER_VALVE", start, end, DB["query"], TB["query"][block])
+    context = {
+        "MAU-201-CW-V": "MAU-201-HZ-V",
+        "MAU-202-CW-V": "MAU-202-HZ-V",
+        "MAU-203-CW-V": "MAU-203-HZ-V",
+        "MAU-301-CW-V": "MAU-301-HZ-V",
+        "MAU-401-CW-V": "MAU-401-HZ-V"
+    }
+    for index in result_df.index:
+        for k, v in context.items():
+            if result_df.loc[index, v] == 0:
+                result_df.loc[index, k] = 0
+
+    data = {
+        "time_data": [
+            datetime(
+                year=item.year, month=item.month, day=item.day, hour=item.hour, minute=item.minute, second=item.second
+            ) for item in result_df.index
+        ],
+        "cold_water_valve_201": result_df["MAU-201-CW-V"].values,
+        "cold_water_valve_202": result_df["MAU-202-CW-V"].values,
+        "cold_water_valve_203": result_df["MAU-203-CW-V"].values,
+        "cold_water_valve_301": result_df["MAU-301-CW-V"].values,
+        "cold_water_valve_401": result_df["MAU-401-CW-V"].values,
+    }
+    return data
+
+
+@log_hint
+def get_hot_water_valve(start, end, block="tianjin"):
+    result_df = get_data("HOT_WATER_VALVE", start, end, DB["query"], TB["query"][block])
+    context = {
+        "MAU-201-HW-V": "MAU-201-HZ-V",
+        "MAU-202-HW-V": "MAU-202-HZ-V",
+        "MAU-203-HW-V": "MAU-203-HZ-V",
+        "MAU-301-HW-V": "MAU-301-HZ-V",
+        "MAU-401-HW-V": "MAU-401-HZ-V"
+    }
+    for index in result_df.index:
+        for k, v in context.items():
+            if result_df.loc[index, v] == 0:
+                result_df.loc[index, k] = 0
+
+    data = {
+        "time_data": [
+            datetime(
+                year=item.year, month=item.month, day=item.day, hour=item.hour, minute=item.minute, second=item.second
+            ) for item in result_df.index
+        ],
+        "hot_water_valve_201": result_df["MAU-201-HW-V"].values,
+        "hot_water_valve_202": result_df["MAU-202-HW-V"].values,
+        "hot_water_valve_203": result_df["MAU-203-HW-V"].values,
+        "hot_water_valve_301": result_df["MAU-301-HW-V"].values,
+        "hot_water_valve_401": result_df["MAU-401-HW-V"].values,
+    }
+    return data
+
+
+@log_hint
+def get_air_supply_pressure(start, end, block="tianjin"):
+    result_df = get_data("AIR_SUPPLY_PRESSURE", start, end, DB["query"], TB["query"][block])
+    context = {
+        "MAU-201-SA-P": "MAU-201-HZ-V",
+        "MAU-202-SA-P": "MAU-202-HZ-V",
+        "MAU-203-SA-P": "MAU-203-HZ-V",
+        "MAU-301-SA-P": "MAU-301-HZ-V",
+        "MAU-401-SA-P": "MAU-401-HZ-V"
+    }
+    for index in result_df.index:
+        for k, v in context.items():
+            if result_df.loc[index, v] == 0:
+                result_df.loc[index, k] = 0
+
+    data = {
+        "time_data": [
+            datetime(
+                year=item.year, month=item.month, day=item.day, hour=item.hour, minute=item.minute, second=item.second
+            ) for item in result_df.index
+        ],
+        "air_supply_pressure_201": result_df["MAU-201-SA-P"].values,
+        "air_supply_pressure_202": result_df["MAU-202-SA-P"].values,
+        "air_supply_pressure_203": result_df["MAU-203-SA-P"].values,
+        "air_supply_pressure_301": result_df["MAU-301-SA-P"].values,
+        "air_supply_pressure_401": result_df["MAU-401-SA-P"].values,
+    }
+    return data
+
+
+@log_hint
+def get_air_supply_humidity(start, end, block="tianjin"):
+    result_df = get_data("AIR_SUPPLY_HUMIDITY", start, end, DB["query"], TB["query"][block])
+    context = {
+        "MAU-201-SA-RH": "MAU-201-HZ-V",
+        "MAU-202-SA-RH": "MAU-202-HZ-V",
+        "MAU-203-SA-RH": "MAU-203-HZ-V",
+        "MAU-301-SA-RH": "MAU-301-HZ-V",
+        "MAU-401-SA-RH": "MAU-401-HZ-V"
+    }
+    for index in result_df.index:
+        for k, v in context.items():
+            if result_df.loc[index, v] == 0:
+                result_df.loc[index, k] = 0
+
+    data = {
+        "time_data": [
+            datetime(
+                year=item.year, month=item.month, day=item.day, hour=item.hour, minute=item.minute, second=item.second
+            ) for item in result_df.index
+        ],
+        "air_supply_humidity_201": result_df["MAU-202-SA-RH"].values,
+        "air_supply_humidity_202": result_df["MAU-202-SA-RH"].values,
+        "air_supply_humidity_203": result_df["MAU-202-SA-RH"].values,
+        "air_supply_humidity_301": result_df["MAU-301-SA-RH"].values,
+        "air_supply_humidity_401": result_df["MAU-401-SA-RH"].values,
+    }
+    return data
+
+
+@log_hint
+def get_air_supply_temperature(start, end, block="tianjin"):
+    result_df = get_data("AIR_SUPPLY_TEMPERATURE", start, end, DB["query"], TB["query"][block])
+    context = {
+        "MAU-201-SA-T": "MAU-201-HZ-V",
+        "MAU-202-SA-T": "MAU-202-HZ-V",
+        "MAU-203-SA-T": "MAU-203-HZ-V",
+        "MAU-301-SA-T": "MAU-301-HZ-V",
+        "MAU-401-SA-T": "MAU-401-HZ-V"
+    }
+    for index in result_df.index:
+        for k, v in context.items():
+            if result_df.loc[index, v] == 0:
+                result_df.loc[index, k] = 0
+
+    data = {
+        "time_data": [
+            datetime(
+                year=item.year, month=item.month, day=item.day, hour=item.hour, minute=item.minute, second=item.second
+            ) for item in result_df.index
+        ],
+        "air_supply_temperature_201": result_df["MAU-202-SA-T"].values,
+        "air_supply_temperature_202": result_df["MAU-202-SA-T"].values,
+        "air_supply_temperature_203": result_df["MAU-202-SA-T"].values,
+        "air_supply_temperature_301": result_df["MAU-301-SA-T"].values,
+        "air_supply_temperature_401": result_df["MAU-401-SA-T"].values,
+    }
+    return data
+
+
+update_history_data(["tianjin"])

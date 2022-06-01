@@ -1,5 +1,7 @@
+import json
 import os
 import glob
+import time
 import shutil
 import logging
 import platform
@@ -12,6 +14,11 @@ from configparser import ConfigParser
 from datetime import datetime, timedelta
 from tools import get_point_mapping, get_file_data, get_all_columns, DataMissing
 from data_calc import update_realtime_data, backup_statistics_data
+
+
+# pd.set_option('display.max_columns',None)
+# pd.set_option('max_colwidth',100)
+# pd.set_option('display.max_rows',None)
 
 
 class DataFormat:
@@ -140,61 +147,51 @@ class DataFormat:
                 print("没有文件")
                 return None
             else:
+                dfs = pd.DataFrame()
                 for dir_path in os.listdir(self.data_path):
                     df = pd.DataFrame()
                     files = glob.glob(self.data_path + "/" + dir_path + "/*." + self.file_type)
-                    file_index = None
-
                     for file in files:
                         point_mapping, res = get_point_mapping(file), []
+                        if "AHU" in file and "AHU-402-3-HW-V" in df.columns:
+                            point_mapping = {k: v if v != "AHU-402-3-HW-V" else "AHU-402-3-HW-V(2)" for k, v in point_mapping.items()}
 
                         file_data, columns = get_file_data(file, point_mapping)
 
                         if isinstance(file_data, pd.DataFrame):
                             file_df = file_data
                         else:
-
                             file_df = pd.DataFrame(file_data, columns=[point_mapping.get(item) for item in columns])
-                            file_df["date"] = pd.DatetimeIndex(
-                                pd.to_datetime(file_df["date"] + " " + file_df["time"])
-                            )
-                            new_columns = ["date"] + list(file_df.columns[2:])
-                            file_df = file_df.loc[:, new_columns]
 
-                        if not file_index:
-                            file_index = len(file_df.index)
-                        else:
-                            if file_index != len(file_df.index):
-                                print("异常，文件：{}".format(file), "公共：{}, now：{}".format(file_index, len(file_df.index)))
-                                raise DataMissing(
-                                    "异常，文件：{},公共索引长度:{},当前文件索引长度：{}".format(
-                                        file, file_index, len(file_df.index)
-                                    )
-                                )
+                        file_df["date"] = pd.DatetimeIndex(pd.to_datetime(file_df["date"] + " " + file_df["time"]))
+                        new_columns = [item for item in file_df.columns if item != "time"]
+                        file_df = file_df.loc[:, new_columns]
+                        file_df = file_df.set_index("date")
 
-                        if "date" not in df.columns:
+                        df = pd.concat([df, file_df], axis=1)
 
-                            df = pd.concat([df, file_df], axis=1)
-                        else:
-                            df = pd.concat([df, file_df.loc[:, file_df.columns[1:]]], axis=1)
                     all_columns = get_all_columns(self.chart_file)
-
                     for column in all_columns:
                         if column not in df.columns:
                             df[column] = np.nan
-                    df.drop_duplicates(inplace=True)
-
-                    df = df.set_index("date")
-                    df = df.resample(self.fre).last()
-                    df.index.name = self.id_var
+                    # df.drop_duplicates(inplace=True)
+                    df = df[all_columns]
 
                     if self.data_check(df):
-                        df = df.reset_index()
-                        df = df.melt(id_vars=self.id_var, var_name=self.var_name)
-                        logging.info("数据全部获取完成{}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
-                        return df.sort_values(by=self.id_var)
+                        try:
+                            dfs = pd.concat([dfs, df])
+                        except:
+                            import traceback
+                            traceback.print_exc()
+                            exit()
                     else:
-                        raise DataMissing("数据检查异常")
+
+                        raise DataMissing("数据检查异常, 日期目录：{}".format(dir_path))
+                    print("{} 获取完成".format(dir_path))
+                dfs = dfs.reset_index()
+                dfs = dfs.melt(id_vars=self.id_var, var_name=self.var_name)
+                logging.info("数据全部获取完成{}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+                return dfs.sort_values(by=self.id_var)
 
         else:
             if not glob.glob(self.data_path + '/*.' + self.file_type):
@@ -221,6 +218,13 @@ class DataFormat:
         :param items: 数据
         :return:
         """
+        for index in items.index:
+            try:
+                float(items.loc[index, "value"])
+            except:
+                items.loc[index, "value"] = np.nan
+                print("异常值处理", items.loc[index])
+
         # 存入数据库，追加
         if items is not None:
             items.to_sql(
@@ -296,6 +300,7 @@ class DataFormat:
                 dates.append(item.hour)
         if len(dates) == 24:
             return True
+        print(dates)
         return False
 
     def file_clear(self):
@@ -321,9 +326,9 @@ class DataFormat:
                 if self.insert_to_sql(items, engine):
                     self.original_table_backup()  # 备份
 
-                    update_realtime_data(self.table_name)   # 公式计算
+                    # update_realtime_data(self.table_name)   # 公式计算
 
-                    backup_statistics_data(self.table_name, self.statistics_backup)  # 计算值备份
+                    # backup_statistics_data(self.table_name, self.statistics_backup)  # 计算值备份
 
                     self.clear_backup()  # 清除备份
                     self.file_clear()   # 清除数据文件

@@ -1,7 +1,7 @@
 # data_format
 ### 1. 文件结构
 
-![data_format.png](http://tva1.sinaimg.cn/large/bf776e91ly1h1xlsuegjkj20i40cwdhs.jpg)
+![data_format文件结构.png](http://tva1.sinaimg.cn/large/bf776e91ly1h2bhsmi1pyj20qs0jmdk1.jpg)
 
 - data：配置相关的文件
 
@@ -16,8 +16,8 @@
 - *.py：主程序代码
 
   - main.py：交互式主程序，直接执行即可
-  - cona.py、kamba.py、tianjin.py：各版块代码，后期设置自动化可用到
-  - tools.py、其他文件：辅助函数
+  - data_calc.py：主要用户按照公式计算最终值进行存储
+  - tools.py：其他文件：辅助函数
 
     
   
@@ -38,7 +38,7 @@ python main.py
 
 ### 3. 主函数流程
 
-![data_format流程.png](http://tva1.sinaimg.cn/large/bf776e91ly1h1xmai3itfj20n20gb75w.jpg)
+![data_format流程.png](http://tva1.sinaimg.cn/large/bf776e91ly1h2bif0042ej20wp0gcwgp.jpg)
 
 ​    
 

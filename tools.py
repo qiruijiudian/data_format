@@ -71,15 +71,14 @@ def get_file_data(file, point_mapping):
         with StringIO("\n".join(lines)) as f:
             df = pd.read_csv(f)
             df.columns = [point_mapping.get(item) for item in df.columns]
-            new_columns = ["date"] + list(df.columns[2:])
-            df = df.loc[:, new_columns]
             return df, None
     else:
         res, columns = [], []
         with open(file) as f:
             for line in f:
-                line = line.replace("No Data", "nan").replace("Data Loss", "nan")
+                line = line.replace("No Data", "nan").replace("Data Loss", "nan").replace(",,,,", "").strip()
                 items = line.split()
+
                 if len(items) == len(point_mapping) and (
                         ("Date" in line and "Time" in line and "Point_" in line) or
                         ("/" in items[0] and ":" in items[1])
@@ -91,6 +90,9 @@ def get_file_data(file, point_mapping):
                         tmp_items = [item if "nan" not in item else np.nan for item in items]
                         if time.minute in [0, 15, 30, 45]:
                             res.append(tmp_items)
+        for item in res:
+            if "/" not in item[0] and ":" not in item[1]:
+                print("异常异异常异常异常", file)
         return res, columns
 
 
@@ -148,11 +150,9 @@ def get_dtype(columns):
     return res
 
 
-def get_data_range():
+def get_data_range(key):
     sql_conf = get_sql_conf(DB["query"])
-    sql_conf2 = get_sql_conf(DB["store"])
     res = {}
-
     with pymysql.connect(
             host=sql_conf["host"],
             user=sql_conf["user"],
@@ -161,7 +161,7 @@ def get_data_range():
     ) as conn1:
         cur1 = conn1.cursor()
 
-        context = {"cona": "time", "kamba": "Timestamp", "tianjin": "time"}
+        context = {"cona": "time", "kamba": "Timestamp", "tianjin": "date"}
         for k, v in context.items():
             cur1.execute("select {} from {} order by {} asc limit 1;".format(v, k, v))
             start = cur1.fetchone()
@@ -172,6 +172,10 @@ def get_data_range():
 
             res[k] = {"start": start, "end": end}
         cur1.close()
+    if key == "history":
+        return res
+
+    sql_conf2 = get_sql_conf(DB["store"])
 
     with pymysql.connect(
             host=sql_conf2["host"],
@@ -190,8 +194,6 @@ def get_data_range():
     return res
 
 
-
-
 def get_realtime_data_range():
     sql_conf = get_sql_conf(DB["query"])
     with pymysql.connect(
@@ -204,7 +206,7 @@ def get_realtime_data_range():
         res = {}
 
         try:
-            context = {"cona": "time", "kamba": "Timestamp", "tianjin": "time"}
+            context = {"cona": "time", "kamba": "Timestamp", "tianjin": "date"}
             for k, v in context.items():
                 cur.execute("select {} from {} order by {} asc limit 1;".format(v, k, v))
                 start = cur.fetchone()
@@ -247,7 +249,7 @@ def get_data(sql_key, start, end, db, tb):
             )
             return result_df.reset_index()
         elif "kamba" in tb:
-            common_sql = SQL_CONTEXT["COMMON_SQL"]
+            common_sql = SQL_CONTEXT[tb]["COMMON_SQL"]
             key_lst = SQL_CONTEXT[tb][sql_key]
             key_lst = [POINT_DF.get(item) for item in key_lst]
             sql = common_sql.format(tb, str(tuple(key_lst)), start, end)
@@ -255,6 +257,12 @@ def get_data(sql_key, start, end, db, tb):
                 index='Timestamp', columns='pointname', values='value'
             )
             return result_df.reset_index(), key_lst
+        elif "tianjin" in tb:
+            common_sql = SQL_CONTEXT[tb]["COMMON_SQL"]
+            key_lst = SQL_CONTEXT[tb][sql_key]
+            sql = common_sql.format(tb, str(tuple(key_lst)), start, end)
+            result_df = pd.read_sql(sql, con=conn).pivot(index='date', columns='pointname', values='value')
+            return result_df
 
 
 def get_store_conn():
@@ -359,7 +367,7 @@ def log_hint(func):
 
 
 SQL_CONTEXT = {
-    "COMMON_SQL": """select * from {} where pointname in {} and Timestamp between '{}' and '{}'""",
+
     "cona": {
         "API_GEOTHERMAL_WELLS_HEAT_PROVIDE_SQL": """
 select * from {} WHERE pointname in ('f3_HHWLoop001_RFlow', 'f3_HHWLoop002_RFlow','f3_HHWLoop003_RFlow',
@@ -496,7 +504,7 @@ select * from {} WHERE pointname in ('f3_WSHP004_F','f2_WSHP003_HHWLT','f3_WSHP0
  (time between '{}' and '{}') """
     },
     "kamba": {
-
+        "COMMON_SQL": """select * from {} where pointname in {} and Timestamp between '{}' and '{}'""",
         "PIPE_NETWORK_NETWORK_HEATING": ['管网回水主管,流量', '集水器旁通管,流量', '管网供水主管,温度TE-0701', '管网回水主管,温度TE-0702'],
         "ALL_LEVEL_TEMP": list(
             chain(*[
@@ -569,6 +577,15 @@ select * from {} WHERE pointname in ('f3_WSHP004_F','f2_WSHP003_HHWLT','f3_WSHP0
                     '循环泵10-4电度量', '冷却塔循环14-1电度量', '冷却塔循环14-2电度量', '冷却塔循环14-3电度量',
                     '蓄热水池放热5-1电度量', '水源热泵1电量', '水源热泵2电量', '水源热泵3电量', '水源热泵4电量', '水源热泵5电量',
                     '水源热泵6电量']
+    },
+    "tianjin": {
+        "COMMON_SQL": "select * from {} where pointname in {} and date between '{}' and '{}'",
+        "FAN_FREQUENCY": ["MAU-201-HZ-V", "MAU-202-HZ-V", "MAU-203-HZ-V", "MAU-301-HZ-V", "MAU-401-HZ-V"],
+        "COLD_WATER_VALVE": ["MAU-201-CW-V", "MAU-202-CW-V", "MAU-203-CW-V", "MAU-301-CW-V", "MAU-401-CW-V", "MAU-201-HZ-V", "MAU-202-HZ-V", "MAU-203-HZ-V", "MAU-301-HZ-V", "MAU-401-HZ-V"],
+        "HOT_WATER_VALVE": ["MAU-201-HW-V", "MAU-202-HW-V", "MAU-203-HW-V", "MAU-301-HW-V", "MAU-401-HW-V", "MAU-201-HZ-V", "MAU-202-HZ-V", "MAU-203-HZ-V", "MAU-301-HZ-V", "MAU-401-HZ-V"],
+        "AIR_SUPPLY_PRESSURE": ["MAU-201-SA-P", "MAU-202-SA-P", "MAU-203-SA-P", "MAU-301-SA-P", "MAU-401-SA-P", "MAU-201-HZ-V", "MAU-202-HZ-V", "MAU-203-HZ-V", "MAU-301-HZ-V", "MAU-401-HZ-V"],
+        "AIR_SUPPLY_HUMIDITY": ["MAU-201-SA-RH", "MAU-202-SA-RH", "MAU-203-SA-RH", "MAU-301-SA-RH", "MAU-401-SA-RH", "MAU-201-HZ-V", "MAU-202-HZ-V", "MAU-203-HZ-V", "MAU-301-HZ-V", "MAU-401-HZ-V"],
+        "AIR_SUPPLY_TEMPERATURE": ["MAU-201-SA-T", "MAU-202-SA-T", "MAU-203-SA-T", "MAU-301-SA-T", "MAU-401-SA-T", "MAU-201-HZ-V", "MAU-202-HZ-V", "MAU-203-HZ-V", "MAU-301-HZ-V", "MAU-401-HZ-V"],
     }
 
 
@@ -588,7 +605,8 @@ DB = {
 TB = {
     "query": {
         "cona": "cona",
-        "kamba": "kamba"
+        "kamba": "kamba",
+        "tianjin": "tianjin"
     },
     "store": {
         "cona": {
@@ -602,21 +620,24 @@ TB = {
                 "hours": "kamba_hours_pool_temperature",
                 "days": "kamba_days_pool_temperature"
             }
-        }
+        },
+        "tianjin": "tianjin_commons_data"
+        # "tianjin": {
+        #     "hours": "tianjin_hours_data",
+        #     "days": "tianjin_days_data"
+        # }
     }
 
 }
 
-height = ['0', '0.2', '0.4', '0.6', '0.8', '1', '1.2', '1.4', '1.6', '1.8', '2', '2.2', '2.4',
-              '2.6', '2.8',
-              '3', '3.2', '3.4', '3.6', '3.8', '4', '4.2', '4.4', '4.6', '4.8', '5', '5.2', '5.4',
-              '5.73', '6.06',
-              '6.39', '6.72', '7.05', '7.38', '7.71', '8.04', '8.37', '8.7', '9.03', '9.36']
-volume = ['1031.370428', '1044.176354', '1057.061292', '1070.025243', '1083.068206', '1096.190181',
-          '1109.391169', '1122.671169', '1136.030181', '1149.468206', '1162.985243', '1176.581292',
-          '1190.256354', '1204.010428', '1217.843514', '1231.755613', '1245.746724', '1259.816848',
-          '1273.965984', '1288.194132', '1302.501292', '1316.887465', '1331.35265', '1367.861292',
-          '1382.603021', '1397.423761', '1412.323514', '2024.324037', '2146.595148', '2180.564037',
-          '2214.799593', '2249.301815', '2284.070704', '2319.106259', '2354.408481', '2389.97737',
-          '2425.812926', '2461.915148', '2498.284037', '840.8894115']
+height = ['0', '0.2', '0.4', '0.6', '0.8', '1', '1.2', '1.4', '1.6', '1.8', '2', '2.2', '2.4', '2.6', '2.8', '3', '3.2',
+          '3.4', '3.6', '3.8', '4', '4.2', '4.4', '4.6', '4.8', '5', '5.2', '5.4', '5.73', '6.06', '6.39', '6.72',
+          '7.05', '7.38', '7.71', '8.04', '8.37', '8.7', '9.03', '9.36']
+VOLUME = [1031.370428, 1044.176354, 1057.061292, 1070.025243, 1083.068206, 1096.190181,
+          1109.391169, 1122.671169, 1136.030181, 1149.468206, 1162.985243, 1176.581292,
+          1190.256354, 1204.010428, 1217.843514, 1231.755613, 1245.746724, 1259.816848,
+          1273.965984, 1288.194132, 1302.501292, 1316.887465, 1331.35265, 1367.861292,
+          1382.603021, 1397.423761, 1412.323514, 2024.324037, 2146.595148, 2180.564037,
+          2214.799593, 2249.301815, 2284.070704, 2319.106259, 2354.408481, 2389.97737,
+          2425.812926, 2461.915148, 2498.284037, 840.8894115]
 
