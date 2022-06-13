@@ -453,3 +453,39 @@ CREATE TABLE kamba (
 2022-05-17 16:09:03,717 - F:/Git/files/github/data_format/main.py[line:359] - INFO: ===============     End 岗巴 数据解析完成 2022-05-17 16:09:03     ===============
 
 2022-05-17 16:09:03,718 - F:/Git/files/github/data_format/main.py[line:362] - INFO: ****************************************************************************************************
+2022-06-02 17:32:29,420 - F:/Git/files/github/data_format/main.py[line:72] - INFO: ****************************************************************************************************
+2022-06-02 17:32:29,428 - F:/Git/files/github/data_format/main.py[line:76] - INFO: ===============     Start 岗巴 数据解析开始 2022-06-02 17:32:29     ===============
+
+2022-06-02 17:32:30,300 - F:/Git/files/github/data_format/main.py[line:204] - INFO: 开始获取数据文件['./data/data/kamba\\5.17.csv', './data/data/kamba\\5.18.csv', './data/data/kamba\\5.19.csv', './data/data/kamba\\5.20.csv', './data/data/kamba\\5.21.csv', './data/data/kamba\\5.22.csv', './data/data/kamba\\5.23.csv', './data/data/kamba\\5.24.csv', './data/data/kamba\\5.25.csv', './data/data/kamba\\5.26.csv', './data/data/kamba\\5.27.csv', './data/data/kamba\\5.28.csv', './data/data/kamba\\5.29.csv', './data/data/kamba\\5.30.csv', './data/data/kamba\\5.31.csv']
+2022-06-02 17:32:31,886 - F:/Git/files/github/data_format/main.py[line:211] - INFO: 数据全部获取完成2022-06-02 17:32:31
+2022-06-02 17:35:01,628 - F:/Git/files/github/data_format/main.py[line:72] - INFO: ****************************************************************************************************
+2022-06-02 17:35:01,628 - F:/Git/files/github/data_format/main.py[line:76] - INFO: ===============     Start 岗巴 数据解析开始 2022-06-02 17:35:01     ===============
+
+2022-06-02 17:35:02,344 - F:/Git/files/github/data_format/main.py[line:204] - INFO: 开始获取数据文件['./data/data/kamba\\5.17.csv', './data/data/kamba\\5.18.csv', './data/data/kamba\\5.19.csv', './data/data/kamba\\5.20.csv', './data/data/kamba\\5.21.csv', './data/data/kamba\\5.22.csv', './data/data/kamba\\5.23.csv', './data/data/kamba\\5.24.csv', './data/data/kamba\\5.25.csv', './data/data/kamba\\5.26.csv', './data/data/kamba\\5.27.csv', './data/data/kamba\\5.28.csv', './data/data/kamba\\5.29.csv', './data/data/kamba\\5.30.csv', './data/data/kamba\\5.31.csv']
+2022-06-02 17:35:03,687 - F:/Git/files/github/data_format/main.py[line:211] - INFO: 数据全部获取完成2022-06-02 17:35:03
+2022-06-02 17:35:24,548 - F:/Git/files/github/data_format/main.py[line:241] - INFO: 完成所有数据上传
+2022-06-02 17:36:10,972 - F:/Git/files/github/data_format/main.py[line:288] - INFO: 数据备份已完成 表名：kamba，文件名：./data/backup/kamba/original\kamba_20220602.sql, 时间：2022-06-02 17:36:10
+2022-06-02 17:36:15,014 - F:/Git/files/github/data_format/main.py[line:345] - INFO: 数据解析异常，错误原因：(1146, "Table 'data_center_statistical.tianjin_days_data' doesn't exist"), 当前时间：2022-06-02 17:36:15
+2022-06-02 17:36:15,061 - F:/Git/files/github/data_format/main.py[line:358] - INFO: ===============     End 岗巴 数据解析完成 2022-06-02 17:36:15     ===============
+
+2022-06-02 17:36:15,061 - F:/Git/files/github/data_format/main.py[line:361] - INFO: ****************************************************************************************************
+2022-06-09 15:29:52,308 - F:/Git/files/github/data_format/main.py[line:72] - INFO: ****************************************************************************************************
+2022-06-09 15:29:52,308 - F:/Git/files/github/data_format/main.py[line:76] - INFO: ===============     Start 岗巴 数据解析开始 2022-06-09 15:29:52     ===============
+
+2022-06-09 15:29:53,333 - F:/Git/files/github/data_format/main.py[line:204] - INFO: 开始获取数据文件['./data/data/kamba\\6.1.csv', './data/data/kamba\\6.2.csv', './data/data/kamba\\6.3.csv', './data/data/kamba\\6.4.csv', './data/data/kamba\\6.5.csv', './data/data/kamba\\6.6.csv']
+2022-06-09 15:29:54,058 - F:/Git/files/github/data_format/main.py[line:211] - INFO: 数据全部获取完成2022-06-09 15:29:54
+2022-06-09 15:30:06,141 - F:/Git/files/github/data_format/main.py[line:244] - INFO: 完成所有数据上传
+2022-06-09 15:30:50,223 - F:/Git/files/github/data_format/main.py[line:291] - INFO: 数据备份已完成 表名：kamba，文件名：./data/backup/kamba/original\kamba_20220609.sql, 时间：2022-06-09 15:30:50
+2022-06-09 15:31:40,442 - F:/Git/files/github/data_format/main.py[line:361] - INFO: ===============     End 岗巴 数据解析完成 2022-06-09 15:31:40     ===============
+
+2022-06-09 15:31:40,442 - F:/Git/files/github/data_format/main.py[line:364] - INFO: ****************************************************************************************************
+2022-06-13 15:11:56,384 - F:/Git/files/github/data_format/main.py[line:72] - INFO: ****************************************************************************************************
+2022-06-13 15:11:56,407 - F:/Git/files/github/data_format/main.py[line:76] - INFO: ===============     Start 岗巴 数据解析开始 2022-06-13 15:11:56     ===============
+
+2022-06-13 15:11:58,590 - F:/Git/files/github/data_format/main.py[line:204] - INFO: 开始获取数据文件['./data/data/kamba\\2022.6.10.csv', './data/data/kamba\\2022.6.7.csv', './data/data/kamba\\2022.6.8.csv', './data/data/kamba\\2022.6.9.csv']
+2022-06-13 15:11:59,137 - F:/Git/files/github/data_format/main.py[line:211] - INFO: 数据全部获取完成2022-06-13 15:11:59
+2022-06-13 15:12:07,040 - F:/Git/files/github/data_format/main.py[line:244] - INFO: 完成所有数据上传
+2022-06-13 15:12:56,529 - F:/Git/files/github/data_format/main.py[line:291] - INFO: 数据备份已完成 表名：kamba，文件名：./data/backup/kamba/original\kamba_20220613.sql, 时间：2022-06-13 15:12:56
+2022-06-13 15:13:11,319 - F:/Git/files/github/data_format/main.py[line:361] - INFO: ===============     End 岗巴 数据解析完成 2022-06-13 15:13:11     ===============
+
+2022-06-13 15:13:11,319 - F:/Git/files/github/data_format/main.py[line:364] - INFO: ****************************************************************************************************

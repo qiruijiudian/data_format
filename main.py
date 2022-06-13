@@ -211,19 +211,22 @@ class DataFormat:
                 logging.info("数据全部获取完成{}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
                 return dfs.sort_values(by=self.id_var)
 
-    def insert_to_sql(self, items, conn):
+    def insert_to_sql(self, items, conn, deal_nan=False):
         """
         上传至数据库
         :param conn: 数据库连接
         :param items: 数据
+        :param deal_nan: 天津数据需要额外处理异常值
         :return:
         """
-        for index in items.index:
-            try:
-                float(items.loc[index, "value"])
-            except:
-                items.loc[index, "value"] = np.nan
-                print("异常值处理", items.loc[index])
+        if deal_nan:
+            # 天津数据需要执行
+            for index in items.index:
+                try:
+                    float(items.loc[index, "value"])
+                except:
+                    items.loc[index, "value"] = np.nan
+                    print("异常值处理", items.loc[index])
 
         # 存入数据库，追加
         if items is not None:
@@ -326,9 +329,9 @@ class DataFormat:
                 if self.insert_to_sql(items, engine):
                     self.original_table_backup()  # 备份
 
-                    # update_realtime_data(self.table_name)   # 公式计算
+                    update_realtime_data(self.table_name)   # 公式计算
 
-                    # backup_statistics_data(self.table_name, self.statistics_backup)  # 计算值备份
+                    backup_statistics_data(self.table_name, self.statistics_backup)  # 计算值备份
 
                     self.clear_backup()  # 清除备份
                     self.file_clear()   # 清除数据文件

@@ -184,7 +184,7 @@ def get_data_range(key):
             database=sql_conf2["database"]
     ) as conn2:
         cur2 = conn2.cursor()
-        context2 = {"cona": "cona_days_data", "kamba": "kamba_days_data", "tianjin": "tianjin_days_data"}
+        context2 = {"cona": "cona_days_data", "kamba": "kamba_days_data", "tianjin": "tianjin_commons_data"}
         for k, v in context2.items():
             cur2.execute("select time_data from {} order by time_data desc limit 1;".format(v))
             item = cur2.fetchone()

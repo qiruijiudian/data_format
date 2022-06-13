@@ -260,7 +260,7 @@ def backup_statistics_data(block, backup_path):
     tables = {
         "cona": ["cona_days_data", "cona_hours_data"],
         "kamba": ["kamba_hours_data", "kamba_days_data", "kamba_days_pool_data", "kamba_hours_pool_data"],
-        "tianjin": []
+        "tianjin": ["tianjin_commons_data"]
     }
     now, num = datetime.today().strftime("%Y%m%d"), 1
     name = os.path.join(backup_path, "{}_{}.sql".format(block, now))
@@ -279,9 +279,9 @@ def backup_statistics_data(block, backup_path):
     print("数据备份已完成 文件名：{}, 时间：{}".format(
         name, datetime.today().strftime("%Y-%m-%d %H:%M:%S")
     ))
-    # logging.info("数据备份已完成 表名：{}，文件名：{}, 时间：{}".format(
-    #     self.table_name, name, datetime.today().strftime("%Y-%m-%d %H:%M:%S")
-    # ))
+    logging.info("数据备份已完成 表名：{}，文件名：{}, 时间：{}".format(
+        self.table_name, name, datetime.today().strftime("%Y-%m-%d %H:%M:%S")
+    ))
 
 
 # **********************************************************************************************************************
@@ -2527,9 +2527,9 @@ def get_air_supply_humidity(start, end, block="tianjin"):
                 year=item.year, month=item.month, day=item.day, hour=item.hour, minute=item.minute, second=item.second
             ) for item in result_df.index
         ],
-        "air_supply_humidity_201": result_df["MAU-202-SA-RH"].values,
+        "air_supply_humidity_201": result_df["MAU-201-SA-RH"].values,
         "air_supply_humidity_202": result_df["MAU-202-SA-RH"].values,
-        "air_supply_humidity_203": result_df["MAU-202-SA-RH"].values,
+        "air_supply_humidity_203": result_df["MAU-203-SA-RH"].values,
         "air_supply_humidity_301": result_df["MAU-301-SA-RH"].values,
         "air_supply_humidity_401": result_df["MAU-401-SA-RH"].values,
     }
@@ -2557,13 +2557,14 @@ def get_air_supply_temperature(start, end, block="tianjin"):
                 year=item.year, month=item.month, day=item.day, hour=item.hour, minute=item.minute, second=item.second
             ) for item in result_df.index
         ],
-        "air_supply_temperature_201": result_df["MAU-202-SA-T"].values,
+        "air_supply_temperature_201": result_df["MAU-201-SA-T"].values,
         "air_supply_temperature_202": result_df["MAU-202-SA-T"].values,
-        "air_supply_temperature_203": result_df["MAU-202-SA-T"].values,
+        "air_supply_temperature_203": result_df["MAU-203-SA-T"].values,
         "air_supply_temperature_301": result_df["MAU-301-SA-T"].values,
         "air_supply_temperature_401": result_df["MAU-401-SA-T"].values,
     }
     return data
 
 
-update_history_data(["tianjin"])
+# update_history_data(["tianjin"])
+# update_realtime_data("kamba")
