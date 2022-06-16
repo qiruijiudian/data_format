@@ -126,13 +126,14 @@ def data_collation(block, start, end):
         air_supply_pressure = get_air_supply_pressure(start, end)
         air_supply_humidity = get_air_supply_humidity(start, end)
         air_supply_temperature = get_air_supply_temperature(start, end)
+        air_temperature_and_humidity = get_temperature_and_humidity(start, end)
         items = [
             fan_frequency,
             cold_water_valve,
             hot_water_valve,
             air_supply_pressure,
             air_supply_humidity,
-            air_supply_temperature
+            air_supply_temperature, air_temperature_and_humidity
         ]
         res = {}
         for item in items:
@@ -144,7 +145,7 @@ def data_collation(block, start, end):
 def update_history_data(blocks=None):
     """全部历史数据更新"""
     if not blocks:
-        blocks = ["cona", "kamba", "天津"]
+        blocks = ["cona", "kamba", "tianjin"]
 
     data_range = get_data_range("history")
     for block in blocks:
@@ -2565,6 +2566,24 @@ def get_air_supply_temperature(start, end, block="tianjin"):
     }
     return data
 
+@log_hint
+def get_temperature_and_humidity(start, end, block="tianjin"):
+    result_df = get_data("TEMPERATURE_AND_HUMIDITY", start, end, DB["query"], TB["query"][block])
 
-# update_history_data(["tianjin"])
+
+    data = {
+        "time_data": [
+            datetime(
+                year=item.year, month=item.month, day=item.day, hour=item.hour, minute=item.minute, second=item.second
+            ) for item in result_df.index
+        ],
+        "air_temperature": result_df["temp"].values,
+        "air_humidity": result_df["humidity"].values,
+    }
+    return data
+
+
+update_history_data(["tianjin"])
 # update_realtime_data("kamba")
+
+# print(get_temperature_and_humidity("2022-03-15 00:00:00", "2022-05-01 23:59:59"))

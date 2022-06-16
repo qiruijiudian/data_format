@@ -85,6 +85,7 @@ class DataFormat:
             'mysql+pymysql://{}:{}@{}/{}?charset=utf8mb4'.format(
                 self.conn_conf["user"],
                 self.conn_conf["password"],
+                # self.conn_conf["host"],
                 "localhost",
                 self.db_name
             )
@@ -137,6 +138,27 @@ class DataFormat:
         else:
             raise DataMissing("数据遗漏, 当前文件：{}".format(file))
 
+    def get_tianjin_weather(self, time_data):
+        eng = create_engine(
+            'mysql+pymysql://{}:{}@{}/{}?charset=utf8mb4'.format(
+                self.conn_conf["user"],
+                self.conn_conf["password"],
+                "localhost",
+                "weather"
+            )
+        )
+
+        df = pd.read_sql(
+            "select time, temp, humidity from tianjin where time in {}".format(
+                tuple(time_data)
+            ), con=eng
+        )
+        df["temp"] = (df["temp"] - 32) / 1.8
+        df = df.sort_values(by="time")
+        df = df.set_index("time")
+        eng.dispose()
+        return df
+
     def get_data(self):
         """获取数据内容，错那、岗巴会获取到单个文件内容整理成一个dataframe，天津数据会将该日所有机组的数据文件整合成一个dataframe，缺失项设置为NAN
 
@@ -179,8 +201,25 @@ class DataFormat:
 
                     if self.data_check(df):
                         try:
+                            df = df.resample(self.fre).last()
+                            time_data = [
+                                "{}-{}-{} {}:{}:{}".format(
+                                    item.year, item.month, item.day, item.hour, item.minute, item.second
+                                ) for item in df.index
+                            ]
+                            temp_df = self.get_tianjin_weather(time_data)
+                            temp_index = temp_df.index
+                            for df_index in df.index:
+                                if df_index in temp_index:
+                                    df.loc[df_index, "temp"] = temp_df.loc[df_index, "temp"]
+                                    df.loc[df_index, "humidity"] = temp_df.loc[df_index, "humidity"]
+                                else:
+                                    df.loc[df_index, "temp"] = np.nan
+                                    df.loc[df_index, "humidity"] = np.nan
+
                             dfs = pd.concat([dfs, df])
                         except:
+
                             import traceback
                             traceback.print_exc()
                             exit()
@@ -329,11 +368,11 @@ class DataFormat:
                 if self.insert_to_sql(items, engine):
                     self.original_table_backup()  # 备份
 
-                    update_realtime_data(self.table_name)   # 公式计算
+                    # update_realtime_data(self.table_name)   # 公式计算
 
-                    backup_statistics_data(self.table_name, self.statistics_backup)  # 计算值备份
+                    # backup_statistics_data(self.table_name, self.statistics_backup)  # 计算值备份
 
-                    self.clear_backup()  # 清除备份
+                    # self.clear_backup()  # 清除备份
                     self.file_clear()   # 清除数据文件
             else:
                 logging.info(
