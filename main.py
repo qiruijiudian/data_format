@@ -362,30 +362,26 @@ class DataFormat:
                     "岗巴" if "kamba" in self.table_name else "错那" if "cona" in self.table_name else "天津"
                 )
             )
-            backup_statistics_data(self.table_name, self.statistics_backup)  # 计算值备份
 
-            self.clear_backup()  # 清除备份
-            self.file_clear()  # 清除数据文件
+            if not success.strip():
+                items = self.get_data()
+                if self.insert_to_sql(items, engine):
+                    self.original_table_backup()  # 备份
 
-            # if not success.strip():
-            #     items = self.get_data()
-            #     if self.insert_to_sql(items, engine):
-            #         self.original_table_backup()  # 备份
-            #
-            #         update_realtime_data(self.table_name)   # 公式计算
-            #
-            #         backup_statistics_data(self.table_name, self.statistics_backup)  # 计算值备份
-            #
-            #         self.clear_backup()  # 清除备份
-            #         self.file_clear()   # 清除数据文件
-            # else:
-            #     logging.info(
-            #         "===============     End {} 操作已取消 {}     ===============\n".format(
-            #             "岗巴" if "kamba" in self.table_name else "错那" if "cona" in self.table_name else "天津",
-            #             datetime.today().strftime("%Y-%m-%d %H:%M:%S")
-            #         )
-            #     )
-            #     print("===============     操作已取消     ===============")
+                    update_realtime_data(self.table_name)   # 公式计算
+
+                    backup_statistics_data(self.table_name, self.statistics_backup)  # 计算值备份
+
+                    self.clear_backup()  # 清除备份
+                    self.file_clear()   # 清除数据文件
+            else:
+                logging.info(
+                    "===============     End {} 操作已取消 {}     ===============\n".format(
+                        "岗巴" if "kamba" in self.table_name else "错那" if "cona" in self.table_name else "天津",
+                        datetime.today().strftime("%Y-%m-%d %H:%M:%S")
+                    )
+                )
+                print("===============     操作已取消     ===============")
 
         except Exception as e:
             logging.info("数据解析异常，错误原因：{}, 当前时间：{}".format(e, datetime.today().strftime("%Y-%m-%d %H:%M:%S")))
