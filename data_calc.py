@@ -280,8 +280,8 @@ def backup_statistics_data(block, backup_path):
     print("数据备份已完成 文件名：{}, 时间：{}".format(
         name, datetime.today().strftime("%Y-%m-%d %H:%M:%S")
     ))
-    logging.info("数据备份已完成 表名：{}，文件名：{}, 时间：{}".format(
-        self.table_name, name, datetime.today().strftime("%Y-%m-%d %H:%M:%S")
+    logging.info("数据备份已完成 文件名：{}, 时间：{}".format(
+        name, datetime.today().strftime("%Y-%m-%d %H:%M:%S")
     ))
 
 
@@ -2583,7 +2583,7 @@ def get_temperature_and_humidity(start, end, block="tianjin"):
     return data
 
 
-update_history_data(["tianjin"])
+# update_history_data(["tianjin"])
 # update_realtime_data("kamba")
 
 # print(get_temperature_and_humidity("2022-03-15 00:00:00", "2022-05-01 23:59:59"))

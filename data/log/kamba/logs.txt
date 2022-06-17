@@ -489,3 +489,21 @@ CREATE TABLE kamba (
 2022-06-13 15:13:11,319 - F:/Git/files/github/data_format/main.py[line:361] - INFO: ===============     End 岗巴 数据解析完成 2022-06-13 15:13:11     ===============
 
 2022-06-13 15:13:11,319 - F:/Git/files/github/data_format/main.py[line:364] - INFO: ****************************************************************************************************
+2022-06-17 16:02:07,343 - F:/Git/files/github/data_format/main.py[line:72] - INFO: ****************************************************************************************************
+2022-06-17 16:02:07,369 - F:/Git/files/github/data_format/main.py[line:76] - INFO: ===============     Start 岗巴 数据解析开始 2022-06-17 16:02:07     ===============
+
+2022-06-17 16:02:07,773 - F:/Git/files/github/data_format/main.py[line:243] - INFO: 开始获取数据文件['./data/data/kamba\\2022.6.11.csv', './data/data/kamba\\2022.6.12.csv', './data/data/kamba\\2022.6.13.csv', './data/data/kamba\\2022.6.14.csv']
+2022-06-17 16:02:08,325 - F:/Git/files/github/data_format/main.py[line:250] - INFO: 数据全部获取完成2022-06-17 16:02:08
+2022-06-17 16:02:16,076 - F:/Git/files/github/data_format/main.py[line:283] - INFO: 完成所有数据上传
+2022-06-17 16:03:00,384 - F:/Git/files/github/data_format/main.py[line:330] - INFO: 数据备份已完成 表名：kamba，文件名：./data/backup/kamba/original\kamba_20220617.sql, 时间：2022-06-17 16:03:00
+2022-06-17 16:03:12,711 - F:/Git/files/github/data_format/main.py[line:387] - INFO: 数据解析异常，错误原因：name 'self' is not defined, 当前时间：2022-06-17 16:03:12
+2022-06-17 16:03:12,717 - F:/Git/files/github/data_format/main.py[line:400] - INFO: ===============     End 岗巴 数据解析完成 2022-06-17 16:03:12     ===============
+
+2022-06-17 16:03:12,717 - F:/Git/files/github/data_format/main.py[line:403] - INFO: ****************************************************************************************************
+2022-06-17 16:06:51,420 - F:/Git/files/github/data_format/main.py[line:72] - INFO: ****************************************************************************************************
+2022-06-17 16:06:51,420 - F:/Git/files/github/data_format/main.py[line:76] - INFO: ===============     Start 岗巴 数据解析开始 2022-06-17 16:06:51     ===============
+
+2022-06-17 16:06:53,520 - F:\Git\files\github\data_format\data_calc.py[line:284] - INFO: 数据备份已完成 文件名：./data/backup/kamba/statistics\kamba_20220617(2).sql, 时间：2022-06-17 16:06:53
+2022-06-17 16:06:53,540 - F:/Git/files/github/data_format/main.py[line:404] - INFO: ===============     End 岗巴 数据解析完成 2022-06-17 16:06:53     ===============
+
+2022-06-17 16:06:53,540 - F:/Git/files/github/data_format/main.py[line:407] - INFO: ****************************************************************************************************
