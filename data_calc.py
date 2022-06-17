@@ -227,7 +227,7 @@ def store_data(block, items):
         print("开始 {} - {} 上传".format(block, "日数据"))
         days_dtype = get_dtype(days_data.keys())
         days_df = pd.DataFrame(days_data)
-        days_df.to_csv("days.csv")
+        # days_df.to_csv("days.csv")
         days_df.to_sql(name=TB["store"][block]["days"], con=engine, if_exists="append", index=False, dtype=days_dtype)
         # logging.info("完成 {} - {} 上传".format(block, "日数据"))
         print("完成 {} - {} 上传".format(block, "日数据"))
