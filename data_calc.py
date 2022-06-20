@@ -257,6 +257,9 @@ def store_df_to_sql(df, tb_name, d_type=None):
 
 
 def backup_statistics_data(block, backup_path):
+    if not os.path.exists(backup_path):
+        os.makedirs(backup_path)
+
     sql_conf = get_sql_conf(DB["store"])
     tables = {
         "cona": ["cona_days_data", "cona_hours_data"],
@@ -269,6 +272,7 @@ def backup_statistics_data(block, backup_path):
     while os.path.exists(name):
         num += 1
         name = os.path.join(backup_path, "{}_{}({}).sql".format(block, now, num))
+
     backup_sql = "mysqldump -u{} -p{} {} {} > {}".format(
         sql_conf["user"],
         sql_conf["password"],
@@ -2569,8 +2573,6 @@ def get_air_supply_temperature(start, end, block="tianjin"):
 @log_hint
 def get_temperature_and_humidity(start, end, block="tianjin"):
     result_df = get_data("TEMPERATURE_AND_HUMIDITY", start, end, DB["query"], TB["query"][block])
-
-
     data = {
         "time_data": [
             datetime(
@@ -2586,4 +2588,5 @@ def get_temperature_and_humidity(start, end, block="tianjin"):
 # update_history_data(["tianjin"])
 # update_realtime_data("kamba")
 
-# print(get_temperature_and_humidity("2022-03-15 00:00:00", "2022-05-01 23:59:59"))
+# print(get_temperature_and_humidity("2022-06-14 00:00:00", "2022-06-20 23:59:59"))
+# print(get_temperature_and_humidity())

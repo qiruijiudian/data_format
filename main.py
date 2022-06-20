@@ -309,6 +309,9 @@ class DataFormat:
 
         """
         now, num = datetime.today().strftime("%Y%m%d"), 1
+
+        if not os.path.exists(self.original_backup):
+            os.makedirs(self.original_backup)
         name = os.path.join(self.original_backup, "{}_{}.sql".format(self.table_name, now))
 
         while os.path.exists(name):
@@ -349,8 +352,11 @@ class DataFormat:
         """删除数据文件
         """
         data_path = self.data_path
-        shutil.rmtree(data_path)
-        os.makedirs(self.data_path)
+        if os.path.exists(self.data_path):
+            shutil.rmtree(data_path)
+
+        if not os.path.exists(self.data_path):
+            os.makedirs(self.data_path)
 
     def run(self):
         engine = self.get_conn()
