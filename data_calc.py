@@ -489,8 +489,7 @@ def get_cona_com_cop(start, end, block="cona"):
 
     result_df['RX'] = 1000 * 4.17 * result_df['f5_HHWLoop001_RFlow'] * \
                       (result_df['f5_HHWLoop001_ST'] - result_df['f5_HHWLoop001_RT']) / 3600
-    result_df['heat_pipe_network_heating'] = result_df['RU'] + result_df['RV'] + result_df['RW'] + result_df[
-        'RX']
+    result_df['heat_pipe_network_heating'] = result_df['RU'] + result_df['RV'] + result_df['RW'] + result_df['RX']
 
     # 处理machine_room_pump_power
     result_df['machine_room_pump_power'] = result_df['f3_meter01_KW'] + result_df['f3_meter02_KW'] + \
@@ -814,7 +813,6 @@ def get_cona_heat_provided(start, end, block="cona"):
             'high_temp_plate_exchange_heat_production': 'mean'
         }
     )
-    # print(hours_df)
 
     load_hours_df = resample_data_by_hours(
         result_df, "time",
@@ -1772,7 +1770,7 @@ def get_kamba_load(start, end, block="kamba"):
     result_df['HHWLoop_HeatLoad'] = (result_df[point_lst[0]] - result_df[point_lst[1]]) * 4.186 * (
             result_df[point_lst[2]] - result_df[point_lst[3]]
     ) / 3.6
-    result_df["heat_pipe_network_flow_rate"] = result_df[point_lst[0]] = result_df[point_lst[1]]
+    result_df["heat_pipe_network_flow_rate"] = result_df[point_lst[0]] - result_df[point_lst[1]]
     # result_df = result_df.loc[:, ["Timestamp", "HHWLoop_HeatLoad", "heat_pipe_network_flow_rate"]]
 
     hours_df = resample_data_by_hours(
@@ -1917,13 +1915,9 @@ def get_kamba_calories(start, end, block="kamba"):
     :return: 包含时数据和日数据的字典
 
         time_data: 日期,
-        hours_data:
-            high_temperature_plate_exchange_heat: 高温板换制热量
-            wshp_heat: 水源热泵制热量
-            high_temperature_plate_exchange_heat_rate: 高温板换制热功率
-        days_data:
-            high_temperature_plate_exchange_heat: 高温板换制热总量
-            wshp_heat: 水源热泵制热总量
+        high_temperature_plate_exchange_heat: 高温板换制热量
+        wshp_heat: 水源热泵制热量
+        high_temperature_plate_exchange_heat_rate: 高温板换制热功率
     """
     result_df, point_lst = get_data("CALORIES", start, end, DB["query"], TB["query"][block])
     result_df['WSHP_HeatLoad'] = 4.186 * (
@@ -1957,9 +1951,11 @@ def get_kamba_calories(start, end, block="kamba"):
         },
         {
             'WSHP_HeatLoad': 'sum',
-            'power': 'sum'
+            'power': ['sum', 'mean']
         }
     )
+
+    print(days_df)
 
     data = {
         "hours_data": {
@@ -1984,8 +1980,9 @@ def get_kamba_calories(start, end, block="kamba"):
                     hour=item.hour
                 ) for item in days_df.index
             ],
-            "high_temperature_plate_exchange_heat": days_df["power"].values,
-            "wshp_heat": days_df["WSHP_HeatLoad"].values,
+            "high_temperature_plate_exchange_heat": days_df["power"]["sum"].values,
+            "high_temperature_plate_exchange_heat_rate": days_df["power"]["mean"].values,
+            "wshp_heat": days_df["WSHP_HeatLoad"]["sum"].values,
         }
     }
     return data
@@ -2073,7 +2070,7 @@ def get_kamba_solar_heat_supply(start, end, block="kamba"):
             "solar_collector": hours_df["IB"].values,
             "solar_radiation": hours_df["IA"].values,
             "total_solar_radiation": hours_total_solar_radiation.values,
-            "heat_supply": hours_df["IB"].values,
+            "heat_supply": hours_df["HHWLoop_HeatLoad"].values,
             "flow_rate": hours_df["collector_system_flow_rate"].values,
             "heat_collection_system_water_supply_temperature": hours_df[point_lst[6]].values,
             "heat_collection_system_water_return_temperature": hours_df[point_lst[7]].values
@@ -2110,7 +2107,7 @@ def get_kamba_heat_supply(start, end, block="kamba"):
     :return: 包含时数据和日数据的字典
         time_data: 日期
         rate: 供热率
-        heat_supply: 供热量
+        # heat_supply: 供热量
         power_consume: 水源热泵耗电量
     """
     load_df, load_point_lst = get_data("PIPE_NETWORK_HEATING", start, end, DB["query"], TB["query"][block])
@@ -2307,9 +2304,9 @@ def get_kamba_co2_emission(start, end, block="kamba"):
     :param end: 结束时间
     :return: 包含时数据和日数据的字典
         time_data: 日期
-        power_consume: 耗电量
+        co2_power_consume: 耗电量
         co2_emission_reduction: co2减排量  需要计算累加值
-        co2_equal_num: 等效种植数目数量
+        co2_equal_num: 等效种植树木数量
     """
     result_df, point_lst = get_data("POWER_CONSUME", start, end, DB["query"], TB["query"][block])
     result_df = result_df.set_index("Timestamp", drop=True)
@@ -2590,3 +2587,4 @@ def get_temperature_and_humidity(start, end, block="tianjin"):
 
 # print(get_temperature_and_humidity("2022-06-14 00:00:00", "2022-06-20 23:59:59"))
 # print(get_temperature_and_humidity())
+# print(get_kamba_calories("2022-05-14 00:00:00", "2022-05-20 23:59:59"))
