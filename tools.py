@@ -265,6 +265,16 @@ def get_data(sql_key, start, end, db, tb):
             return result_df
 
 
+def get_custom_conn(conf):
+    return create_engine(
+        'mysql+pymysql://{}:{}@{}/{}?charset=utf8'.format(
+            conf["user"],
+            conf["password"],
+            conf["host"],
+            conf["database"]
+        )
+    )
+
 def get_store_conn():
     """返回数据库连接
     """

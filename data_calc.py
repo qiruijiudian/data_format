@@ -10,8 +10,8 @@ import logging
 import traceback
 import numpy as np
 from tools import resample_data_by_hours, resample_data_by_days, DB, TB, log_hint, check_time, \
-    get_dtype, get_data, get_data_range, get_store_conn, get_sql_conf, VOLUME
-from sqlalchemy.dialects.mysql import DATETIME, DOUBLE
+    get_dtype, get_data, get_data_range, get_store_conn, get_sql_conf, VOLUME, get_custom_conn
+from sqlalchemy.dialects.mysql import DATETIME, DOUBLE, VARCHAR
 
 from datetime import datetime, timedelta
 import collections
@@ -156,6 +156,7 @@ def update_history_data(blocks=None):
         if block == "cona":
             items = data_collation(block, start, end)
             store_data(block, items)
+
         elif block == "kamba":
             items = data_collation(block, start, end)
             pool_data = items.pop("pool_data")
@@ -166,11 +167,13 @@ def update_history_data(blocks=None):
             pool_dtype = {k: DOUBLE if k != "Timestamp" else DATETIME for k in hours_pool_df.columns}
             store_df_to_sql(hours_pool_df, "kamba_hours_pool_data", pool_dtype)
             store_df_to_sql(days_pool_df, "kamba_days_pool_data", pool_dtype)
-        elif block == "tianjin":
+        # elif block == "tianjin":
+        else:
             items = data_collation(block, start, end)
             data_dtype = get_dtype(items.keys())
             df = pd.DataFrame(items)
             store_df_to_sql(df, TB["store"][block], data_dtype)
+        backup_data_to_long_table(block, items)
 
 
 def update_realtime_data(block):
@@ -196,12 +199,14 @@ def update_realtime_data(block):
         pool_dtype = {k: DOUBLE if k != "Timestamp" else DATETIME for k in hours_pool_df.columns}
         store_df_to_sql(hours_pool_df, "kamba_hours_pool_data", pool_dtype)
         store_df_to_sql(days_pool_df, "kamba_days_pool_data", pool_dtype)
-    elif block == "tianjin":
+    # elif block == "tianjin":
+    else:
 
         items = data_collation(block, start, end)
         data_dtype = get_dtype(items.keys())
         df = pd.DataFrame(items)
         store_df_to_sql(df, TB["store"][block], data_dtype)
+    backup_data_to_long_table(block, items)
 
 
 def store_data(block, items):
@@ -289,6 +294,51 @@ def backup_statistics_data(block, backup_path):
     logging.info("数据备份已完成 文件名：{}, 时间：{}".format(
         name, datetime.today().strftime("%Y-%m-%d %H:%M:%S")
     ))
+
+
+def backup_data_to_long_table(block, items):
+    custom_conf = get_sql_conf("dc_long")
+    eng = get_custom_conn(custom_conf)
+    d_type = {"time_data": DATETIME, "pointname": VARCHAR(length=50), "value": DOUBLE}
+    try:
+        if block == "cona":
+
+            hours_df, days_df = pd.DataFrame(items["hours_data"]), pd.DataFrame(items["days_data"])
+            hours_df = hours_df.melt(id_vars="time_data", var_name="pointname")
+            days_df = days_df.melt(id_vars="time_data", var_name="pointname")
+            hours_df.to_sql(name="cona_hours_data", con=eng, if_exists="append", index=False, dtype=d_type)
+            days_df.to_sql(name="cona_days_data", con=eng, if_exists="append", index=False, dtype=d_type)
+            print("历史数据 - 错那宽表备份完成")
+        elif block == "kamba":
+            pool_data = items.pop("pool_data")
+            pool_type = {"timestamp": DATETIME, "pointname": VARCHAR(length=50), "value": DOUBLE}
+
+            # 存储水池数据
+            hours_pool_df = pd.DataFrame(pool_data["hours_data"])
+            days_pool_df = pd.DataFrame(pool_data["days_data"])
+
+            hours_pool_df.to_sql(name="kamba_hours_pool_data", con=eng, if_exists="append", index=False, dtype=pool_type)
+            days_pool_df.to_sql(name="kamba_days_pool_data", con=eng, if_exists="append", index=False, dtype=pool_type)
+
+            # 处理基础数据
+            hours_df, days_df = pd.DataFrame(items["hours_data"]), pd.DataFrame(items["days_data"])
+            hours_df = hours_df.melt(id_vars="time_data", var_name="pointname")
+            days_df = days_df.melt(id_vars="time_data", var_name="pointname")
+            hours_df.to_sql(name="kamba_hours_data", con=eng, if_exists="append", index=False, dtype=d_type)
+            days_df.to_sql(name="kamba_days_data", con=eng, if_exists="append", index=False, dtype=d_type)
+            print("历史数据 - 岗巴宽表备份完成")
+        elif block == "tianjin":
+            df = pd.DataFrame(items)
+            df = df.melt(id_vars="time_data", var_name="pointname")
+            df.to_sql(name="tianjin_commons_data", con=eng, if_exists="append", index=False, dtype=d_type)
+            print("历史数据 - 天津宽表备份完成")
+    except Exception as e:
+        print("宽表备份异常")
+        import traceback
+        traceback.print_exc()
+        eng.dispose()
+    finally:
+        eng.dispose()
 
 
 # **********************************************************************************************************************
@@ -2566,6 +2616,7 @@ def get_air_supply_temperature(start, end, block="tianjin"):
     }
     return data
 
+
 @log_hint
 def get_temperature_and_humidity(start, end, block="tianjin"):
     result_df = get_data("TEMPERATURE_AND_HUMIDITY", start, end, DB["query"], TB["query"][block])
@@ -2581,9 +2632,5 @@ def get_temperature_and_humidity(start, end, block="tianjin"):
     return data
 
 
+# 更新历史数据
 # update_history_data(["kamba"])
-# update_realtime_data("kamba")
-
-# print(get_temperature_and_humidity("2022-06-14 00:00:00", "2022-06-20 23:59:59"))
-# print(get_temperature_and_humidity())
-# print(get_kamba_calories("2022-05-14 00:00:00", "2022-05-20 23:59:59"))
