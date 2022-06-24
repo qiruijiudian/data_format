@@ -101,13 +101,13 @@ def data_collation(block, start, end):
         ]
         success, hours_time, days_time = check_time(items)
 
-        for item in items:
-            for key in ["hours_data", "days_data"]:
-                print("{} start".format(key))
-                for k, v in item[key].items():
-                    print(k, len(v))
-                print("{} end".format(key))
-            print("*" * 100)
+        # for item in items:
+        #     for key in ["hours_data", "days_data"]:
+        #         print("{} start".format(key))
+        #         for k, v in item[key].items():
+        #             print(k, len(v))
+        #         print("{} end".format(key))
+        #     print("*" * 100)
 
         if success:
 
@@ -151,6 +151,8 @@ def update_history_data(blocks=None):
     for block in blocks:
         start = "{} 00:00:00".format(data_range[block]["start"].strftime("%Y-%m-%d"))
         end = "{} 23:59:59".format(data_range[block]["end"].strftime("%Y-%m-%d"))
+        # TODO
+        # start, end = "2022-05-01 00:00:00", "2022-06-01 23:59:59"
         if block == "cona":
             items = data_collation(block, start, end)
             store_data(block, items)
@@ -1406,7 +1408,6 @@ def get_kamba_heat_storage_heat(start, end, block="kamba"):
     # days_heat_supply_days = [item / 2000 / 2400 for item in days_high_heat_total]
     days_heat_supply_days = [item / 2000 / 2400 for item in days_high_heat_of_storage.values]
 
-    print(days_low_heat_total)
 
     data["days_data"] = {
         "time_data": days_time_data,
@@ -1954,8 +1955,6 @@ def get_kamba_calories(start, end, block="kamba"):
             'power': ['sum', 'mean']
         }
     )
-
-    print(days_df)
 
     data = {
         "hours_data": {
@@ -2582,7 +2581,7 @@ def get_temperature_and_humidity(start, end, block="tianjin"):
     return data
 
 
-# update_history_data(["tianjin"])
+# update_history_data(["kamba"])
 # update_realtime_data("kamba")
 
 # print(get_temperature_and_humidity("2022-06-14 00:00:00", "2022-06-20 23:59:59"))
