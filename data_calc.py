@@ -199,6 +199,8 @@ def update_realtime_data(block):
         pool_dtype = {k: DOUBLE if k != "Timestamp" else DATETIME for k in hours_pool_df.columns}
         store_df_to_sql(hours_pool_df, "kamba_hours_pool_data", pool_dtype)
         store_df_to_sql(days_pool_df, "kamba_days_pool_data", pool_dtype)
+
+        items["pool_data"] = pool_data
     # elif block == "tianjin":
     else:
 
