@@ -19,12 +19,20 @@ import collections
 
 # ************************************************  公共函数  ************************************************************
 
+class DataCalc:
+    def __init__(self, block, print_mode, log_mode):
+        self.block = block
+        self.print_mode = print_mode
+        self.log_mode = log_mode
+
+
 
 def data_collation(block, start, end):
     res = {
         "hours_data": {},
         "days_data": {}
     }
+
     print("{} 数据获取 开始".format(block))
     if block == "cona":
         geothermal_wells_heat_provide = get_cona_geothermal_wells_heat_provide(start, end)

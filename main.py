@@ -12,7 +12,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.dialects.mysql import DOUBLE, DATETIME, VARCHAR
 from configparser import ConfigParser
 from datetime import datetime, timedelta
-from tools import get_point_mapping, get_file_data, get_all_columns, DataMissing
+from tools import get_point_mapping, get_file_data, get_all_columns, DataMissing, log_or_print
 from data_calc import update_realtime_data, backup_statistics_data
 
 
@@ -24,6 +24,8 @@ from data_calc import update_realtime_data, backup_statistics_data
 class DataFormat:
 
     def __init__(self, config_file):
+        self.log_mode = True
+        self.print_mode = True
         cfg = ConfigParser()
         cfg.read(config_file, encoding='utf-8')
         base_log_path = "./data/log/" if platform.system() == "Windows" else "/home/data_format/data/log/"
@@ -69,13 +71,16 @@ class DataFormat:
             "user": "root",
             "password": "cdqr2008",
         }
-        logging.info("*" * 100)
-        logging.info(
+
+        log_or_print(
+            self,
             "===============     Start {} 数据解析开始 {}     ===============\n".format(
                 "岗巴" if "kamba" in self.table_name else "错那" if "cona" in self.table_name else "天津",
                 datetime.today().strftime("%Y-%m-%d %H:%M:%S")
-            )
+            ),
+            start=True
         )
+
 
     def get_conn(self):
         """返回数据库连接
@@ -148,11 +153,7 @@ class DataFormat:
             )
         )
 
-        df = pd.read_sql(
-            "select time, temp, humidity from tianjin where time in {}".format(
-                tuple(time_data)
-            ), con=eng
-        )
+        df = pd.read_sql("select time, temp, humidity from tianjin where time in {}".format(tuple(time_data)), con=eng)
         df["temp"] = (df["temp"] - 32) / 1.8
         df = df.sort_values(by="time")
         df = df.set_index("time")
@@ -165,8 +166,7 @@ class DataFormat:
         """
         if "tianjin" in self.conf_file:
             if not os.listdir(self.data_path):
-                logging.info('没有文件')
-                print("没有文件")
+                log_or_print(self, "没有文件")
                 return None
             else:
                 dfs = pd.DataFrame()
@@ -226,28 +226,25 @@ class DataFormat:
                     else:
 
                         raise DataMissing("数据检查异常, 日期目录：{}".format(dir_path))
-                    print("{} 获取完成".format(dir_path))
+                    log_or_print(self, "{} 获取完成".format(dir_path))
                 dfs = dfs.reset_index()
                 dfs = dfs.melt(id_vars=self.id_var, var_name=self.var_name)
-                logging.info("数据全部获取完成{}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+                log_or_print(self, "数据全部获取完成{}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
                 return dfs.sort_values(by=self.id_var)
 
         else:
             if not glob.glob(self.data_path + '/*.' + self.file_type):
-                logging.info('没有文件')
-                print("没有文件")
+                log_or_print(self, "没有文件")
                 return None
 
             else:
                 dfs = pd.DataFrame()
-                logging.info("开始获取数据文件{}".format(glob.glob(self.data_path + '/*.' + self.file_type)))
+                log_or_print(self, "开始获取数据文件{}".format(glob.glob(self.data_path + '/*.' + self.file_type)))
                 for file in glob.glob(self.data_path + '/*.' + self.file_type):
-                    dfs = dfs.append(
-                        self.parse_data(file)
-                    )
+                    dfs = dfs.append(self.parse_data(file))
 
                 dfs.drop_duplicates(inplace=True)  # 去重
-                logging.info("数据全部获取完成{}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+                log_or_print(self, "数据全部获取完成{}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
                 return dfs.sort_values(by=self.id_var)
 
     def insert_to_sql(self, items, conn, deal_nan=False):
@@ -280,7 +277,7 @@ class DataFormat:
                     "value": DOUBLE
                 }
             )
-            logging.info("完成所有数据上传")
+            log_or_print(self, "完成所有数据上传")
             return True
 
         return False
@@ -302,7 +299,7 @@ class DataFormat:
                     os.remove(os.path.join(backup_type, file))
                     res.append(file)
             if res:
-                logging.info("已清除备份文件：", ", ".join(res))
+                log_or_print(self, "已清除备份文件：" + ", ".join(res))
 
     def original_table_backup(self):
         """数据备份，每次数据存储执行完成后会进行备份，将数据导出成sql文件
@@ -326,10 +323,7 @@ class DataFormat:
             name
         )
         os.system(backup_sql)
-        print("数据备份已完成 表名：{}，文件名：{}, 时间：{}".format(
-            self.table_name, name, datetime.today().strftime("%Y-%m-%d %H:%M:%S")
-        ))
-        logging.info("数据备份已完成 表名：{}，文件名：{}, 时间：{}".format(
+        log_or_print(self, "数据备份已完成 表名：{}，文件名：{}, 时间：{}".format(
             self.table_name, name, datetime.today().strftime("%Y-%m-%d %H:%M:%S")
         ))
 
@@ -345,7 +339,7 @@ class DataFormat:
                 dates.append(item.hour)
         if len(dates) == 24:
             return True
-        print(dates)
+
         return False
 
     def file_clear(self):
@@ -381,33 +375,27 @@ class DataFormat:
                     self.clear_backup()  # 清除备份
                     self.file_clear()   # 清除数据文件
             else:
-                logging.info(
+                log_or_print(
+                    self,
                     "===============     End {} 操作已取消 {}     ===============\n".format(
                         "岗巴" if "kamba" in self.table_name else "错那" if "cona" in self.table_name else "天津",
                         datetime.today().strftime("%Y-%m-%d %H:%M:%S")
                     )
                 )
-                print("===============     操作已取消     ===============")
 
         except Exception as e:
-            logging.info("数据解析异常，错误原因：{}, 当前时间：{}".format(e, datetime.today().strftime("%Y-%m-%d %H:%M:%S")))
+            log_or_print(self, "数据解析异常，错误原因：{}, 当前时间：{}".format(e, datetime.today().strftime("%Y-%m-%d %H:%M:%S")))
             traceback.print_exc()
-            # print("数据解析异常，错误原因：{}, 当前时间：{}".format(e, datetime.today().strftime("%Y-%m-%d %H:%M:%S")))
         finally:
-            print(
+            log_or_print(
+                self,
                 "===============     End {} 数据解析完成 {}     ===============\n".format(
                     "岗巴" if "kamba" in self.table_name else "错那" if "cona" in self.table_name else "天津",
                     datetime.today().strftime("%Y-%m-%d %H:%M:%S")
-                )
+                ),
+                end=True
             )
-            logging.info(
-                "===============     End {} 数据解析完成 {}     ===============\n".format(
-                    "岗巴" if "kamba" in self.table_name else "错那" if "cona" in self.table_name else "天津",
-                    datetime.today().strftime("%Y-%m-%d %H:%M:%S")
-                )
-            )
-            logging.info("*" * 100)
-            print("*" * 100)
+
             engine.dispose()
 
 
