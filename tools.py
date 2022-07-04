@@ -2,9 +2,10 @@
 # -*- coding: utf-8 -*-
 # @Time    : 2022/4/25 17:21
 # @Author  : MAYA
+import collections
 import platform
 from functools import wraps
-from sqlalchemy.dialects.mysql import DATETIME, DOUBLE
+from sqlalchemy.dialects.mysql import DATETIME, DOUBLE, VARCHAR
 import json
 import random
 import logging
@@ -155,19 +156,34 @@ def check_time(items):
         return True, hours_time, days_time
 
 
-def get_dtype(columns):
+def get_dtype(columns, backup=False):
     """根据列名称生成dtype，时间列time_data或者Timestamp设置为DATETIME，其他设置为DOUBLE
 
     :param columns: dataframe列集合
+    :param backup: 是否为宽格式备份
     :return: dtype字典，定义了所有列的数据类型
     """
 
     res = {}
-    for item in columns:
-        if item == "time_data" or item == "Timestamp":
-            res[item] = DATETIME
+    if backup:
+        if "time_data" in columns:
+            item = "time_data"
+        elif "timestamp" in columns or "Timestamp" in columns:
+            item = "timestamp"
         else:
-            res[item] = DOUBLE
+            item = "date"
+
+        res = {
+            item: DATETIME,
+            "pointname": VARCHAR(length=50),
+            "value": DOUBLE
+        }
+    else:
+        for item in columns:
+            if item == "time_data" or item == "Timestamp" or item == "timestamp":
+                res[item] = DATETIME
+            else:
+                res[item] = DOUBLE
     return res
 
 
@@ -200,6 +216,19 @@ def get_store_conn():
         )
     )
 
+
+def get_conn_by_key(key):
+    """返回默认数据库连接（默认为计算值存储库data_center_statistical）"""
+    sql_conf = get_sql_conf(DB["key"])
+
+    return create_engine(
+        'mysql+pymysql://{}:{}@{}/{}?charset=utf8'.format(
+            sql_conf["user"],
+            sql_conf["password"],
+            sql_conf["host"],
+            sql_conf["database"]
+        )
+    )
 
 def get_sql_conf(db):
     # 获取数据库配置信息
@@ -450,7 +479,8 @@ POINT_DF = {"时间列 1": "Timestamp", "板换1/2串联调节阀,开度反馈AE
 
 DB = {
     "query": "data_center_original",
-    "store": "data_center_statistical"
+    "store": "data_center_statistical",
+    "backup": "data_center_statistical_wide"
 }
 
 TB = {
@@ -482,10 +512,22 @@ TB = {
             }
         },
         "tianjin": "tianjin_commons_data"
-        # "tianjin": {
-        #     "hours": "tianjin_hours_data",
-        #     "days": "tianjin_days_data"
-        # }
+
+    },
+    "backup": {
+        "cona": {
+            "hours": "cona_hours_data",
+            "days": "cona_days_data",
+        },
+        "kamba": {
+            "hours": "kamba_hours_data",
+            "days": "kamba_days_data",
+            "pool_temperature": {
+                "hours": "kamba_hours_pool_temperature",
+                "days": "kamba_days_pool_temperature"
+            }
+        },
+        "tianjin": "tianjin_commons_data"
     }
 
 }
@@ -718,6 +760,12 @@ def get_data(sql_key, start, end, db, tb):
             return result_df
 
 
+def get_time_in_datetime(df, by):
+    if by == "h":
+        return [datetime(year=item.year, month=item.month, day=item.day, hour=item.hour) for item in df.index]
+    else:
+        return [datetime(year=item.year, month=item.month, day=item.day) for item in df.index]
+
 ########################################################################################################################
 # ============================================    公式计算     ==========================================================
 
@@ -823,7 +871,7 @@ def get_cona_geothermal_wells_heat_provide(start, end, block="cona", print_mode=
         }
     )
     days_df = resample_data_by_days(
-        result_df, "time",
+        result_df, "time", False,
         {
             'high_temp_plate_exchange_heat_production': 'mean',
             'water_heat_pump_heat_production': 'mean',
@@ -839,14 +887,14 @@ def get_cona_geothermal_wells_heat_provide(start, end, block="cona", print_mode=
     )
     data = {
         "hours_data": {
-            'time_data': [item for item in hours_df.index],
+            'time_data': get_time_in_datetime(hours_df, "h"),
             'high_temp_plate_exchange_heat_production': hours_df.high_temp_plate_exchange_heat_production.values,
             'water_heat_pump_heat_production': hours_df.water_heat_pump_heat_production.values,
             'geothermal_wells_high_heat_provide': hours_df.geothermal_wells_high_heat_provide.values,
             'geothermal_wells_low_heat_provide': hours_df.geothermal_wells_low_heat_provide.values
         },
         "days_data": {
-            'time_data': [item for item in days_df.index],
+            'time_data': get_time_in_datetime(days_df, "d"),
             'high_temp_plate_exchange_heat_production': days_df.high_temp_plate_exchange_heat_production.values,
             'water_heat_pump_heat_production': days_df.water_heat_pump_heat_production.values,
             'geothermal_wells_high_heat_provide': days_df.geothermal_wells_high_heat_provide.values,
@@ -969,11 +1017,11 @@ def get_cona_com_cop(start, end, block="cona", print_mode=False, log_mode=False)
 
     data = {
         "hours_data": {
-            'time_data': [item for item in hours_df.index],
+            'time_data': get_time_in_datetime(hours_df, "h"),
             'com_cop': hours_cop.values
         },
         "days_data": {
-            'time_data': [item for item in days_df.index],
+            'time_data': get_time_in_datetime(days_df, "d"),
             'com_cop': days_cop.values
         }
     }
@@ -1123,13 +1171,13 @@ def get_cona_cost_saving(start, end, block="cona", print_mode=False, log_mode=Fa
 
     data = {
         "hours_data": {
-            "time_data": [item for item in hours_df.index],
+            "time_data": get_time_in_datetime(hours_df, "h"),
             "cost_saving": hours_df["cost_saving"].values,
             "high_temp_charge": hours_df["high_temp_charge"].values,
             "low_temp_charge": hours_df["low_temp_charge"].values
         },
         "days_data": {
-            "time_data": [item for item in days_df.index],
+            "time_data": get_time_in_datetime(days_df, "d"),
             "cost_saving": days_df["cost_saving"].values,
             "high_temp_charge": days_df["high_temp_charge"].values,
             "low_temp_charge": days_df["low_temp_charge"].values
@@ -1279,7 +1327,7 @@ def get_cona_heat_provided(start, end, block="cona", print_mode=False, log_mode=
     )
     data = {
         "hours_data": {
-            'time_data': [item for item in hours_df.index],
+            'time_data': get_time_in_datetime(hours_df, "h"),
             "heat_well_heating": hours_df["heat_well_heating"].values,
             "heat_pipe_network_heating": hours_df["heat_pipe_network_heating"].values,
             "water_heat_pump_heat_production": hours_df["water_heat_pump_heat_production"].values,
@@ -1289,7 +1337,7 @@ def get_cona_heat_provided(start, end, block="cona", print_mode=False, log_mode=
             "avg_load": load_hours_df["heat_pipe_network_heating"]["mean"].values
         },
         "days_data": {
-            'time_data': [item for item in days_df.index],
+            'time_data': get_time_in_datetime(days_df, "d"),
             "heat_well_heating": days_df["heat_well_heating"].values,
             "heat_pipe_network_heating": days_df["heat_pipe_network_heating"].values,
             "water_heat_pump_heat_production": days_df["water_heat_pump_heat_production"].values,
@@ -1402,13 +1450,13 @@ def get_cona_water_supply_return_temperature(start, end, block="cona", print_mod
 
     data = {
         "hours_data": {
-            'time_data': [item for item in hours_df.index],
+            'time_data': get_time_in_datetime(hours_df, "h"),
             'water_supply_temperature': hours_df["water_supply_temperature"].values,
             'return_water_temperature': hours_df["return_water_temperature"].values,
             'supply_return_water_temp_diff': hours_df["supply_return_water_temp_diff"].values
         },
         "days_data": {
-            'time_data': [item for item in days_df.index],
+            'time_data': get_time_in_datetime(days_df, "d"),
             'water_supply_temperature': days_df["water_supply_temperature"].values,
             'return_water_temperature': days_df["return_water_temperature"].values,
             'supply_return_water_temp_diff': days_df["supply_return_water_temp_diff"].values,
@@ -1462,12 +1510,12 @@ def get_cona_water_replenishment(start, end, block="cona", print_mode=False, log
 
     data = {
         "hours_data": {
-            'time_data': [item for item in hours_df.index],
+            'time_data': get_time_in_datetime(hours_df, "h"),
             'water_replenishment': hours_df["water_replenishment"].values,
             'water_replenishment_limit': hours_df["water_replenishment_limit"].values
         },
         "days_data": {
-            'time_data': [item for item in days_df.index],
+            'time_data': get_time_in_datetime(days_df, "d"),
             'water_replenishment': days_df["water_replenishment"].values,
             'water_replenishment_limit': days_df["water_replenishment_limit"].values
         }
@@ -1584,14 +1632,14 @@ def get_cona_sub_com_cop(start, end, block="cona", print_mode=False, log_mode=Fa
 
     data = {
         "hours_data": {
-            'time_data': [item for item in hours_df.index],
+            'time_data': get_time_in_datetime(hours_df, "h"),
             "f2_cop": hours_df["f2_cop"].values,
             "f3_cop": hours_df["f3_cop"].values,
             "f4_cop": hours_df["f4_cop"].values,
             "f5_cop": hours_df["f5_cop"].values
         },
         "days_data": {
-            'time_data': [item for item in days_df.index],
+            'time_data': get_time_in_datetime(days_df, "d"),
             "f2_cop": days_df["f2_cop"].values,
             "f3_cop": days_df["f3_cop"].values,
             "f4_cop": days_df["f4_cop"].values,
@@ -1679,14 +1727,14 @@ def get_cona_sub_water_source_cop(start, end, block="cona", print_mode=False, lo
 
     data = {
         "hours_data": {
-            'time_data': [item for item in hours_df.index],
+            'time_data': get_time_in_datetime(hours_df, "h"),
             "f2_whp_cop": hours_df["f2_whp_cop"].values,
             "f3_whp_cop": hours_df["f3_whp_cop"].values,
             "f4_whp_cop": hours_df["f4_whp_cop"].values,
             "f5_whp_cop": hours_df["f5_whp_cop"].values
         },
         "days_data": {
-            'time_data': [item for item in days_df.index],
+            'time_data': get_time_in_datetime(days_df, "d"),
             "f2_whp_cop": days_df["f2_whp_cop"].values,
             "f3_whp_cop": days_df["f3_whp_cop"].values,
             "f4_whp_cop": days_df["f4_whp_cop"].values,
@@ -1744,7 +1792,7 @@ def get_cona_room_network_water_supply_temperature(start, end, block="cona", pri
 
     data = {
         "hours_data": {
-            'time_data': [item for item in hours_df.index],
+            'time_data': get_time_in_datetime(hours_df, "h"),
             'f2_HHWLoop001_ST': hours_df['f2_HHWLoop001_ST'].values,
             'f3_HHWLoop001_ST': hours_df['f3_HHWLoop001_ST'].values,
             'f3_HHWLoop002_ST': hours_df['f3_HHWLoop002_ST'].values,
@@ -1753,7 +1801,7 @@ def get_cona_room_network_water_supply_temperature(start, end, block="cona", pri
             'f5_HHWLoop001_ST': hours_df['f5_HHWLoop001_ST'].values
         },
         "days_data": {
-            'time_data': [item for item in days_df.index],
+            'time_data': get_time_in_datetime(days_df, "d"),
             'f2_HHWLoop001_ST': days_df['f2_HHWLoop001_ST'].values,
             'f3_HHWLoop001_ST': days_df['f3_HHWLoop001_ST'].values,
             'f3_HHWLoop002_ST': days_df['f3_HHWLoop002_ST'].values,
@@ -1767,7 +1815,7 @@ def get_cona_room_network_water_supply_temperature(start, end, block="cona", pri
 
 @log_hint
 def get_cona_temp(time_data):
-    """错那 sub 机房水源热泵COP能效
+    """错那 获取日平均温度
     :param time_data: datetime类型时间集合
     :return: 日平均温度列表
    """
@@ -1826,7 +1874,7 @@ def get_kamba_heat_storage_heat(start, end, block="kamba"):
     for point_index, point_item in enumerate(point_lst):
         days_heat_data = days_df[point_item].mean()
         if not days_time_data:
-            days_time_data = [datetime(year=item.year, month=item.month, day=item.day) for item in days_heat_data.index]
+            days_time_data = get_time_in_datetime(days_heat_data, "d")
 
         tmp_high, tmp_low = [], []
         for heat_index in days_heat_data.index:
@@ -1868,14 +1916,7 @@ def get_kamba_heat_storage_heat(start, end, block="kamba"):
     for point_index, point_item in enumerate(point_lst):
         hours_heat_data = hours_df[point_item].mean()
         if not hours_time_data:
-            hours_time_data = [
-                datetime(
-                    year=item.year,
-                    month=item.month,
-                    day=item.day,
-                    hour=item.hour
-                ) for item in hours_heat_data.index
-            ]
+            hours_time_data = get_time_in_datetime(hours_heat_data, "h")
 
         tmp_high, tmp_low = [], []
         for heat_index in hours_heat_data.index:
@@ -1977,25 +2018,11 @@ def get_kamba_com_cop(start, end, block="kamba"):
 
     data = {
         "hours_data": {
-            "time_data": [
-                datetime(
-                    year=item.year,
-                    month=item.month,
-                    day=item.day,
-                    hour=item.hour
-                ) for item in hours_df.index
-            ],
+            "time_data": get_time_in_datetime(hours_df, "h"),
             "cop": hours_df["cop"].values
         },
         "days_data": {
-            "time_data": [
-                datetime(
-                    year=item.year,
-                    month=item.month,
-                    day=item.day,
-                    hour=item.hour
-                ) for item in days_df.index
-            ],
+            "time_data": get_time_in_datetime(days_df, "d"),
             "cop": days_df["cop"].values
         }
     }
@@ -2053,25 +2080,11 @@ def get_kamba_wshp_cop(start, end, block="kamba"):
 
     data = {
         "hours_data": {
-            "time_data": [
-                datetime(
-                    year=item.year,
-                    month=item.month,
-                    day=item.day,
-                    hour=item.hour
-                ) for item in hours_df.index
-            ],
+            "time_data": get_time_in_datetime(hours_df, "h"),
             "wshp_cop": hours_df["wshp_cop"].values
         },
         "days_data": {
-            "time_data": [
-                datetime(
-                    year=item.year,
-                    month=item.month,
-                    day=item.day,
-                    hour=item.hour
-                ) for item in days_df.index
-            ],
+            "time_data": get_time_in_datetime(days_df, "d"),
             "wshp_cop": days_df["wshp_cop"].values
         }
     }
@@ -2119,14 +2132,7 @@ def get_kamba_water_replenishment(start, end, block="kamba"):
 
     data = {
         "hours_data": {
-            "time_data": [
-                datetime(
-                    year=item.year,
-                    month=item.month,
-                    day=item.day,
-                    hour=item.hour
-                ) for item in hours_df.index
-            ],
+            "time_data": get_time_in_datetime(hours_df, "h"),
             "heat_water_replenishment": hours_df[point_lst[0]].values,
             "heat_water_replenishment_limit": hours_df["heat_water_replenishment_limit"].values,
             "heat_storage_tank_replenishment": hours_df[point_lst[3]].values,
@@ -2134,14 +2140,7 @@ def get_kamba_water_replenishment(start, end, block="kamba"):
             "solar_side_replenishment_limit": hours_df[point_lst[5]].values
         },
         "days_data": {
-            "time_data": [
-                datetime(
-                    year=item.year,
-                    month=item.month,
-                    day=item.day,
-                    hour=item.hour
-                ) for item in days_df.index
-            ],
+            "time_data": get_time_in_datetime(days_df, "d"),
             "heat_water_replenishment": days_df[point_lst[0]].values,
             "heat_water_replenishment_limit": days_df["heat_water_replenishment_limit"].values,
             "heat_storage_tank_replenishment": days_df[point_lst[3]].values,
@@ -2172,26 +2171,12 @@ def get_kamba_solar_matrix_supply_and_return_water_temperature(start, end, block
 
     data = {
         "hours_data": {
-            "time_data": [
-                datetime(
-                    year=item.year,
-                    month=item.month,
-                    day=item.day,
-                    hour=item.hour
-                ) for item in hours_df.index
-            ],
+            "time_data": get_time_in_datetime(hours_df, "h"),
             "solar_matrix_supply_water_temp": hours_df[point_lst[0]].values,
             "solar_matrix_return_water_temp": hours_df[point_lst[1]].values
         },
         "days_data": {
-            "time_data": [
-                datetime(
-                    year=item.year,
-                    month=item.month,
-                    day=item.day,
-                    hour=item.hour
-                ) for item in days_df.index
-            ],
+            "time_data": get_time_in_datetime(days_df, "d"),
             "solar_matrix_supply_water_temp": days_df[point_lst[0]].values,
             "solar_matrix_return_water_temp": days_df[point_lst[1]].values
         }
@@ -2247,14 +2232,7 @@ def get_kamba_load(start, end, block="kamba"):
 
     data = {
         "hours_data": {
-            "time_data": [
-                datetime(
-                    year=item.year,
-                    month=item.month,
-                    day=item.day,
-                    hour=item.hour
-                ) for item in hours_df.index
-            ],
+            "time_data": get_time_in_datetime(hours_df, "h"),
             "max_load": hours_df["HHWLoop_HeatLoad"]["max"].values,
             "min_load": hours_df["HHWLoop_HeatLoad"]["min"].values,
             "avg_load": hours_df["HHWLoop_HeatLoad"]["mean"].values,
@@ -2263,14 +2241,7 @@ def get_kamba_load(start, end, block="kamba"):
             "heat_pipe_network_flow_rate": hours_df["heat_pipe_network_flow_rate"]["mean"].values
         },
         "days_data": {
-            "time_data": [
-                datetime(
-                    year=item.year,
-                    month=item.month,
-                    day=item.day,
-                    hour=item.hour
-                ) for item in days_df.index
-            ],
+            "time_data": get_time_in_datetime(days_df, "d"),
             "max_load": days_df["HHWLoop_HeatLoad"]["max"].values,
             "min_load": days_df["HHWLoop_HeatLoad"]["min"].values,
             "avg_load": days_df["HHWLoop_HeatLoad"]["mean"].values,
@@ -2321,28 +2292,14 @@ def get_kamba_end_supply_and_return_water_temp(start, end, block="kamba"):
     days_df["end_return_water_temp_diff"] = days_df[point_lst[0]] - days_df[point_lst[1]]
     data = {
         "hours_data": {
-            "time_data": [
-                datetime(
-                    year=item.year,
-                    month=item.month,
-                    day=item.day,
-                    hour=item.hour
-                ) for item in hours_df.index
-            ],
+            "time_data": get_time_in_datetime(hours_df, "h"),
             "end_supply_water_temp": hours_df[point_lst[0]].values,
             "end_return_water_temp": hours_df[point_lst[1]].values,
             "end_return_water_temp_diff": hours_df["end_return_water_temp_diff"].values,
             "temp": hours_df[point_lst[2]].values
         },
         "days_data": {
-            "time_data": [
-                datetime(
-                    year=item.year,
-                    month=item.month,
-                    day=item.day,
-                    hour=item.hour
-                ) for item in days_df.index
-            ],
+            "time_data": get_time_in_datetime(days_df, "d"),
             "end_supply_water_temp": days_df[point_lst[0]].values,
             "end_return_water_temp": days_df[point_lst[1]].values,
             "end_return_water_temp_diff": days_df["end_return_water_temp_diff"].values,
@@ -2403,27 +2360,13 @@ def get_kamba_calories(start, end, block="kamba"):
 
     data = {
         "hours_data": {
-            "time_data": [
-                datetime(
-                    year=item.year,
-                    month=item.month,
-                    day=item.day,
-                    hour=item.hour
-                ) for item in hours_df.index
-            ],
+            "time_data": get_time_in_datetime(hours_df, "h"),
             "high_temperature_plate_exchange_heat": hours_df["power"].values,
             "wshp_heat": hours_df["WSHP_HeatLoad"].values,
             "high_temperature_plate_exchange_heat_rate": hours_df["power"].values,
         },
         "days_data": {
-            "time_data": [
-                datetime(
-                    year=item.year,
-                    month=item.month,
-                    day=item.day,
-                    hour=item.hour
-                ) for item in days_df.index
-            ],
+            "time_data": get_time_in_datetime(days_df, "d"),
             "high_temperature_plate_exchange_heat": days_df["power"]["sum"].values,
             "high_temperature_plate_exchange_heat_rate": days_df["power"]["mean"].values,
             "wshp_heat": days_df["WSHP_HeatLoad"]["sum"].values,
@@ -2502,14 +2445,7 @@ def get_kamba_solar_heat_supply(start, end, block="kamba"):
 
     data = {
         "hours_data": {
-            "time_data": [
-                datetime(
-                    year=item.year,
-                    month=item.month,
-                    day=item.day,
-                    hour=item.hour
-                ) for item in hours_df.index
-            ],
+            "time_data": get_time_in_datetime(hours_df, "h"),
             # "solar_collector": hours_df["HHWLoop_HeatLoad"].values,
             "solar_collector": hours_df["IB"].values,
             "solar_radiation": hours_df["IA"].values,
@@ -2520,14 +2456,7 @@ def get_kamba_solar_heat_supply(start, end, block="kamba"):
             "heat_collection_system_water_return_temperature": hours_df[point_lst[7]].values
         },
         "days_data": {
-            "time_data": [
-                datetime(
-                    year=item.year,
-                    month=item.month,
-                    day=item.day,
-                    hour=item.hour
-                ) for item in days_df.index
-            ],
+            "time_data": get_time_in_datetime(days_df, "d"),
             "solar_collector": days_solar_collector_heat.values,
             "heat_supply": days_heat_supply.values,
             "heating_guarantee_rate": days_rate.values,
@@ -2609,27 +2538,13 @@ def get_kamba_heat_supply(start, end, block="kamba"):
 
     data = {
         "hours_data": {
-            "time_data": [
-                datetime(
-                    year=item.year,
-                    month=item.month,
-                    day=item.day,
-                    hour=item.hour
-                ) for item in hours_load.index
-            ],
+            "time_data": get_time_in_datetime(hours_df, "h"),
             "heat_supply_rate": hours_rate.replace([np.inf, -np.inf], np.nan).values,
             # "heat_supply": hours_heat_supply,
             "power_consume": hours_power_consume.values
         },
         "days_data": {
-            "time_data": [
-                datetime(
-                    year=item.year,
-                    month=item.month,
-                    day=item.day,
-                    hour=item.hour
-                ) for item in days_load.index
-            ],
+            "time_data": get_time_in_datetime(days_df, "d"),
             "heat_supply_rate": days_rate.replace([np.inf, -np.inf], np.nan).values,
             # "heat_supply": days_heat_supply,
             "power_consume": days_power_consume.values
@@ -2712,26 +2627,12 @@ def get_kamba_cost_saving(start, end, block="kamba"):
 
     data = {
         "hours_data": {
-            "time_data": [
-                datetime(
-                    year=item.year,
-                    month=item.month,
-                    day=item.day,
-                    hour=item.hour
-                ) for item in hours_df.index
-            ],
+            "time_data": get_time_in_datetime(hours_df, "h"),
             "cost_saving": hours_df["cost_saving"].values,
             "power_consumption": hours_df["SysPower"].values
         },
         "days_data": {
-            "time_data": [
-                datetime(
-                    year=item.year,
-                    month=item.month,
-                    day=item.day,
-                    hour=item.hour
-                ) for item in days_df.index
-            ],
+            "time_data": get_time_in_datetime(days_df, "d"),
             "cost_saving": days_df["cost_saving"].values,
             "power_consumption": days_df["SysPower"].values
         }
