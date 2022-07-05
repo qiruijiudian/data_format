@@ -13,7 +13,7 @@ from sqlalchemy.dialects.mysql import DOUBLE, DATETIME, VARCHAR
 from configparser import ConfigParser
 from datetime import datetime, timedelta
 from tools import get_point_mapping, get_file_data, get_all_columns, DataMissing, log_or_print
-from data_calc import update_realtime_data, backup_statistics_data
+from data_calc import DataCalc
 
 
 # pd.set_option('display.max_columns',None)
@@ -80,7 +80,6 @@ class DataFormat:
             ),
             start=True
         )
-
 
     def get_conn(self):
         """返回数据库连接
@@ -368,9 +367,10 @@ class DataFormat:
                 if self.insert_to_sql(items, engine):
                     self.original_table_backup()  # 备份
 
-                    update_realtime_data(self.table_name)   # 公式计算
+                    dc = DataCalc(self.table_name, self.print_mode, self.log_mode)
+                    dc.update_realtime_data()   # 实时数据（公式计算）
 
-                    backup_statistics_data(self.table_name, self.statistics_backup)  # 计算值备份
+                    dc.backup_statistics_data(self.statistics_backup)   # 计算值备份
 
                     self.clear_backup()  # 清除备份
                     self.file_clear()   # 清除数据文件

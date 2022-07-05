@@ -166,24 +166,26 @@ def get_dtype(columns, backup=False):
 
     res = {}
     if backup:
-        if "time_data" in columns:
-            item = "time_data"
-        elif "timestamp" in columns or "Timestamp" in columns:
-            item = "timestamp"
-        else:
-            item = "date"
 
-        res = {
-            item: DATETIME,
-            "pointname": VARCHAR(length=50),
-            "value": DOUBLE
-        }
-    else:
         for item in columns:
             if item == "time_data" or item == "Timestamp" or item == "timestamp":
                 res[item] = DATETIME
             else:
                 res[item] = DOUBLE
+    else:
+        if "time_data" in columns:
+            item = "time_data"
+        elif "timestamp" in columns:
+            item = "timestamp"
+        elif "Timestamp" in columns:
+            item = "Timestamp"
+        else:
+            item = "date"
+        res = {
+            item: DATETIME,
+            "pointname": VARCHAR(length=50),
+            "value": DOUBLE
+        }
     return res
 
 
@@ -219,7 +221,7 @@ def get_store_conn():
 
 def get_conn_by_key(key):
     """返回默认数据库连接（默认为计算值存储库data_center_statistical）"""
-    sql_conf = get_sql_conf(DB["key"])
+    sql_conf = get_sql_conf(DB[key])
 
     return create_engine(
         'mysql+pymysql://{}:{}@{}/{}?charset=utf8'.format(
@@ -229,6 +231,7 @@ def get_conn_by_key(key):
             sql_conf["database"]
         )
     )
+
 
 def get_sql_conf(db):
     # 获取数据库配置信息
@@ -397,14 +400,14 @@ select * from {} WHERE pointname in ('f3_WSHP004_F','f2_WSHP003_HHWLT','f3_WSHP0
             ])
         ),
         "COM_COP": ['管网回水主管,流量', '集水器旁通管,流量', '管网供水主管,温度TE-0701', '管网回水主管,温度TE-0702',
-                '水源热泵冷凝侧1-1电度量', '水源热泵冷凝侧1-2电度量', '水源热泵冷凝侧1-3电度量', '水源热泵冷凝侧1-4电度量',
-                '水源热泵冷凝侧1-5电度量', '水源热泵冷凝侧1-6电度量', '水源热泵冷凝侧1-7电度量', '水源热泵蒸发侧3-1电度量',
-                '水源热泵蒸发侧3-2电度量', '水源热泵蒸发侧3-3电度量', '水源热泵蒸发侧3-4电度量', '水源热泵蒸发侧3-5电度量',
-                '水源热泵蒸发侧3-6电度量', '水源热泵蒸发侧3-7电度量', '供热主泵4-1电度量', '供热主泵4-2电度量',
-                '供热主泵4-3电度量', '供热主泵4-4电度量', '循环泵10-1电度量', '循环泵10-2电度量', '循环泵10-3电度量',
-                '循环泵10-4电度量', '冷却塔循环14-1电度量', '冷却塔循环14-2电度量', '冷却塔循环14-3电度量',
-                '蓄热水池放热5-1电度量', '水源热泵1电量', '水源热泵2电量', '水源热泵3电量', '水源热泵4电量', '水源热泵5电量',
-                '水源热泵6电量'],
+                    '水源热泵冷凝侧1-1电度量', '水源热泵冷凝侧1-2电度量', '水源热泵冷凝侧1-3电度量', '水源热泵冷凝侧1-4电度量',
+                    '水源热泵冷凝侧1-5电度量', '水源热泵冷凝侧1-6电度量', '水源热泵冷凝侧1-7电度量', '水源热泵蒸发侧3-1电度量',
+                    '水源热泵蒸发侧3-2电度量', '水源热泵蒸发侧3-3电度量', '水源热泵蒸发侧3-4电度量', '水源热泵蒸发侧3-5电度量',
+                    '水源热泵蒸发侧3-6电度量', '水源热泵蒸发侧3-7电度量', '供热主泵4-1电度量', '供热主泵4-2电度量',
+                    '供热主泵4-3电度量', '供热主泵4-4电度量', '循环泵10-1电度量', '循环泵10-2电度量', '循环泵10-3电度量',
+                    '循环泵10-4电度量', '冷却塔循环14-1电度量', '冷却塔循环14-2电度量', '冷却塔循环14-3电度量',
+                    '蓄热水池放热5-1电度量', '水源热泵1电量', '水源热泵2电量', '水源热泵3电量', '水源热泵4电量', '水源热泵5电量',
+                    '水源热泵6电量'],
         "WSHP_COP": [
                 '水源热泵-1冷凝器出口,流量', '水源热泵-1冷凝器出口,温度TE-0602', '水源热泵-1冷凝器进口,温度TE-0601',
                 '水源热泵-2冷凝器出口,流量', '水源热泵-2冷凝器出口,温度TE-0604', '水源热泵-2冷凝器进口,温度TE-0603',
@@ -419,16 +422,16 @@ select * from {} WHERE pointname in ('f3_WSHP004_F','f2_WSHP003_HHWLT','f3_WSHP0
         "PIPE_NETWORK_HEATING": ['管网回水主管,流量', '集水器旁通管,流量', '管网供水主管,温度TE-0701', '管网回水主管,温度TE-0702'],
         "END_SUPPLY_AND_RETURN_WATER_TEMPERATURE": ['管网供水主管,温度TE-0701', '管网回水主管,温度TE-0702', '温度'],
         "CALORIES": ['水源热泵-1冷凝器出口,流量', '水源热泵-1冷凝器出口,温度TE-0602', '水源热泵-1冷凝器进口,温度TE-0601',
-                        '水源热泵-2冷凝器出口,流量', '水源热泵-2冷凝器出口,温度TE-0604', '水源热泵-2冷凝器进口,温度TE-0603',
-                        '水源热泵-3冷凝器出口,流量', '水源热泵-3冷凝器出口,温度TE-0606', '水源热泵-3冷凝器进口,温度TE-0605',
-                        '水源热泵-4冷凝器出口,流量', '水源热泵-4冷凝器出口,温度TE-0608', '水源热泵-4冷凝器进口,温度TE-0607',
-                        '水源热泵-5冷凝器出口,流量', '水源热泵-5冷凝器出口,温度TE-0610', '水源热泵-5冷凝器进口,温度TE-0609',
-                        '水源热泵-6冷凝器出口,流量', '水源热泵-6冷凝器出口,温度TE-0612', '水源热泵-6冷凝器进口,温度TE-0611',
-                        '管网回水主管,流量', '水源热泵-1冷凝器出口,流量', '水源热泵-2冷凝器出口,流量', '水源热泵-4冷凝器出口,流量',
-                        '水源热泵-5冷凝器出口,流量', '水源热泵-6冷凝器出口,流量', '板换1-1二次侧出口,温度TE-0401',
-                        '板换1-2二次侧出口,温度TE-0402', '管网回水主管,温度TE-0702'],
+                     '水源热泵-2冷凝器出口,流量', '水源热泵-2冷凝器出口,温度TE-0604', '水源热泵-2冷凝器进口,温度TE-0603',
+                     '水源热泵-3冷凝器出口,流量', '水源热泵-3冷凝器出口,温度TE-0606', '水源热泵-3冷凝器进口,温度TE-0605',
+                     '水源热泵-4冷凝器出口,流量', '水源热泵-4冷凝器出口,温度TE-0608', '水源热泵-4冷凝器进口,温度TE-0607',
+                     '水源热泵-5冷凝器出口,流量', '水源热泵-5冷凝器出口,温度TE-0610', '水源热泵-5冷凝器进口,温度TE-0609',
+                     '水源热泵-6冷凝器出口,流量', '水源热泵-6冷凝器出口,温度TE-0612', '水源热泵-6冷凝器进口,温度TE-0611',
+                     '管网回水主管,流量', '水源热泵-1冷凝器出口,流量', '水源热泵-2冷凝器出口,流量', '水源热泵-4冷凝器出口,流量',
+                     '水源热泵-5冷凝器出口,流量', '水源热泵-6冷凝器出口,流量', '板换1-1二次侧出口,温度TE-0401',
+                     '板换1-2二次侧出口,温度TE-0402', '管网回水主管,温度TE-0702'],
         "SOLAR_HEAT_SUPPLY": ['管网回水主管,流量', '集水器旁通管,流量', '管网供水主管,温度TE-0701', '管网回水主管,温度TE-0702',
-                '辐射功率', '流量FM-0201', '太阳能矩阵回水总管，温度TE-050', '太阳能矩阵供水总管，温度TE-049', '管网回水主管,流量',
+                              '辐射功率', '流量FM-0201', '太阳能矩阵回水总管，温度TE-050', '太阳能矩阵供水总管，温度TE-049', '管网回水主管,流量',
                               '集水器旁通管,流量', '管网供水主管,温度TE-0701', '管网回水主管,温度TE-0702', '温度'],
         "WSHP_POWER_CONSUME": [
                 '水源热泵冷凝侧1-1电度量', '水源热泵冷凝侧1-2电度量', '水源热泵冷凝侧1-3电度量', '水源热泵冷凝侧1-4电度量', '水源热泵冷凝侧1-5电度量', '水源热泵冷凝侧1-6电度量',
@@ -1814,9 +1817,11 @@ def get_cona_room_network_water_supply_temperature(start, end, block="cona", pri
 
 
 @log_hint
-def get_cona_temp(time_data):
+def get_cona_temp(time_data, print_mode=False, log_mode=False):
     """错那 获取日平均温度
     :param time_data: datetime类型时间集合
+    :param print_mode: 结束时间
+    :param log_mode: 结束时间
     :return: 日平均温度列表
    """
     sql_conf = get_sql_conf("weather")
@@ -1847,11 +1852,13 @@ def get_cona_temp(time_data):
 
 # ==============================================  岗巴 统计项目  =========================================================
 @log_hint
-def get_kamba_heat_storage_heat(start, end, block="kamba"):
+def get_kamba_heat_storage_heat(start, end, block="kamba", print_mode=False, log_mode=False):
     """岗巴 蓄热水池可用热量
     :param block: 隶属 错那数据
     :param start: 开始时间
     :param end: 结束时间
+    :param print_mode: 结束时间
+    :param log_mode: 结束时间
     :return: 包含时数据和日数据的字典
        time_data: 日期,
        low_heat_total:  蓄热水池可用低温热量
@@ -1859,7 +1866,7 @@ def get_kamba_heat_storage_heat(start, end, block="kamba"):
        heat_supply_days:  电锅炉可替换供热天数
    """
     data = {}
-    result_df, point_lst = get_data("ALL_LEVEL_TEMP", start, end, DB["query"], TB["query"][block])
+    result_df, point_lst = get_data("ALL_LEVEL_TEMP", start, end, DB["query"], TB["query"][block]["table"])
     result_df = result_df.set_index(pd.to_datetime(result_df["Timestamp"]))
 
     columns = result_df.columns
@@ -1974,16 +1981,18 @@ def get_kamba_heat_storage_heat(start, end, block="kamba"):
 
 
 @log_hint
-def get_kamba_com_cop(start, end, block="kamba"):
+def get_kamba_com_cop(start, end, block="kamba", print_mode=False, log_mode=False):
     """岗巴 系统COP
     :param block: 隶属 错那数据
     :param start: 开始时间
     :param end: 结束时间
+    :param print_mode: 结束时间
+    :param log_mode: 结束时间
     :return: 包含时数据和日数据的字典
        time_data: 日期,
        cop:  系统综合cop能效
     """
-    result_df, point_lst = get_data("COM_COP", start, end, DB["query"], TB["query"][block])
+    result_df, point_lst = get_data("COM_COP", start, end, DB["query"], TB["query"][block]["table"])
     result_df['HHWLoop_HeatLoad'] = (result_df[point_lst[0]] - result_df[point_lst[1]]) * 4.186 * (
             result_df[point_lst[2]] - result_df[point_lst[3]]
     ) / 3.6
@@ -2030,16 +2039,18 @@ def get_kamba_com_cop(start, end, block="kamba"):
 
 
 @log_hint
-def get_kamba_wshp_cop(start, end, block="kamba"):
+def get_kamba_wshp_cop(start, end, block="kamba", print_mode=False, log_mode=False):
     """岗巴 水源热泵COP
     :param block: 隶属 错那数据
     :param start: 开始时间
     :param end: 结束时间
+    :param print_mode: 结束时间
+    :param log_mode: 结束时间
     :return: 包含时数据和日数据的字典
        time_data: 日期,
        wshp_cop:  水源热泵cop能效
     """
-    result_df, point_lst = get_data("WSHP_COP", start, end, DB["query"], TB["query"][block])
+    result_df, point_lst = get_data("WSHP_COP", start, end, DB["query"], TB["query"][block]["table"])
 
     result_df['WSHP_HeatLoad'] = 4.186 * (
             result_df[point_lst[0]] * (result_df[point_lst[1]] - result_df[point_lst[2]]) +
@@ -2092,17 +2103,19 @@ def get_kamba_wshp_cop(start, end, block="kamba"):
 
 
 @log_hint
-def get_kamba_water_replenishment(start, end, block="kamba"):
+def get_kamba_water_replenishment(start, end, block="kamba", print_mode=False, log_mode=False):
     """岗巴 补水量
     :param block: 隶属 错那数据
     :param start: 开始时间
     :param end: 结束时间
+    :param print_mode: 结束时间
+    :param log_mode: 结束时间
     :return: 包含时数据和日数据的字典
        time_data: 日期,
        heat_water_replenishment:  补水量
        heat_water_replenishment_limit:  补水量限值
     """
-    result_df, point_lst = get_data("WATER_REPLENISHMENT", start, end, DB["query"], TB["query"][block])
+    result_df, point_lst = get_data("WATER_REPLENISHMENT", start, end, DB["query"], TB["query"][block]["table"])
     result_df['heat_water_replenishment_limit'] = (result_df[point_lst[1]] - result_df[point_lst[2]]) * 0.01
     result_df.loc[:, point_lst[5]] *= 0.01
 
@@ -2152,18 +2165,20 @@ def get_kamba_water_replenishment(start, end, block="kamba"):
 
 
 @log_hint
-def get_kamba_solar_matrix_supply_and_return_water_temperature(start, end, block="kamba"):
+def get_kamba_solar_matrix_supply_and_return_water_temperature(start, end, block="kamba", print_mode=False, log_mode=False):
     """岗巴 太阳能矩阵供回水温度
     :param block: 隶属 错那数据
     :param start: 开始时间
     :param end: 结束时间
+    :param print_mode: 结束时间
+    :param log_mode: 结束时间
     :return: 包含时数据和日数据的字典
        time_data: 日期,
        solar_matrix_supply_water_temp:  太阳能矩阵供水温度
        solar_matrix_return_water_temp:  太阳能矩阵回水温度
     """
     result_df, point_lst = get_data("SOLAR_MATRIX_SUPPLY_AND_RETURN_WATER_TEMPERATURE", start, end, DB["query"],
-                                    TB["query"][block])
+                                    TB["query"][block]["table"])
 
     hours_df = resample_data_by_hours(result_df, "Timestamp", {point_lst[0]: "mean", point_lst[1]: "mean"})
 
@@ -2185,18 +2200,20 @@ def get_kamba_solar_matrix_supply_and_return_water_temperature(start, end, block
 
 
 @log_hint
-def get_kamba_load(start, end, block="kamba"):
+def get_kamba_load(start, end, block="kamba", print_mode=False, log_mode=False):
     """岗巴 负荷
     :param block: 隶属 错那数据
     :param start: 开始时间
     :param end: 结束时间
+    :param print_mode: 结束时间
+    :param log_mode: 结束时间
     :return: 包含时数据和日数据的字典
        time_data: 日期,
        max_load:  最大负荷
        min_load:  最小负荷
        avg_load:  平均负荷
     """
-    result_df, point_lst = get_data("PIPE_NETWORK_HEATING", start, end, DB["query"], TB["query"][block])
+    result_df, point_lst = get_data("PIPE_NETWORK_HEATING", start, end, DB["query"], TB["query"][block]["table"])
     result_df['HHWLoop_HeatLoad'] = (result_df[point_lst[0]] - result_df[point_lst[1]]) * 4.186 * (
             result_df[point_lst[2]] - result_df[point_lst[3]]
     ) / 3.6
@@ -2254,11 +2271,13 @@ def get_kamba_load(start, end, block="kamba"):
 
 
 @log_hint
-def get_kamba_end_supply_and_return_water_temp(start, end, block="kamba"):
+def get_kamba_end_supply_and_return_water_temp(start, end, block="kamba", print_mode=False, log_mode=False):
     """岗巴 末端供回水温度与温差
     :param block: 隶属 错那数据
     :param start: 开始时间
     :param end: 结束时间
+    :param print_mode: 结束时间
+    :param log_mode: 结束时间
     :return: 包含时数据和日数据的字典
        time_data: 日期,
        end_supply_water_temp:  末端供水温度
@@ -2267,7 +2286,7 @@ def get_kamba_end_supply_and_return_water_temp(start, end, block="kamba"):
        temp:  平均温度
     """
     result_df, point_lst = get_data("END_SUPPLY_AND_RETURN_WATER_TEMPERATURE", start, end, DB["query"],
-                                    TB["query"][block])
+                                    TB["query"][block]["table"])
 
     hours_df = resample_data_by_hours(
         result_df, "Timestamp",
@@ -2310,19 +2329,20 @@ def get_kamba_end_supply_and_return_water_temp(start, end, block="kamba"):
 
 
 @log_hint
-def get_kamba_calories(start, end, block="kamba"):
+def get_kamba_calories(start, end, block="kamba", print_mode=False, log_mode=False):
     """岗巴 供热分析
     :param block: 隶属 错那数据
     :param start: 开始时间
     :param end: 结束时间
+    :param print_mode: 结束时间
+    :param log_mode: 结束时间
     :return: 包含时数据和日数据的字典
-
         time_data: 日期,
         high_temperature_plate_exchange_heat: 高温板换制热量
         wshp_heat: 水源热泵制热量
         high_temperature_plate_exchange_heat_rate: 高温板换制热功率
     """
-    result_df, point_lst = get_data("CALORIES", start, end, DB["query"], TB["query"][block])
+    result_df, point_lst = get_data("CALORIES", start, end, DB["query"], TB["query"][block]["table"])
     result_df['WSHP_HeatLoad'] = 4.186 * (
             result_df[point_lst[0]] * (result_df[point_lst[1]] - result_df[point_lst[2]]) +
             result_df[point_lst[3]] * (result_df[point_lst[4]] - result_df[point_lst[5]]) +
@@ -2376,11 +2396,13 @@ def get_kamba_calories(start, end, block="kamba"):
 
 
 @log_hint
-def get_kamba_solar_heat_supply(start, end, block="kamba"):
+def get_kamba_solar_heat_supply(start, end, block="kamba", print_mode=False, log_mode=False):
     """岗巴 太阳能集热分析
     :param block: 隶属 错那数据
     :param start: 开始时间
     :param end: 结束时间
+    :param print_mode: 结束时间
+    :param log_mode: 结束时间
     :return: 包含时数据和日数据的字典
         time_data: 日期,
         hours_data:（平均值）
@@ -2391,7 +2413,7 @@ def get_kamba_solar_heat_supply(start, end, block="kamba"):
             heat_supply: 供热量
             rate: 短期太阳能保证率
     """
-    result_df, point_lst = get_data("SOLAR_HEAT_SUPPLY", start, end, DB["query"], TB["query"][block])
+    result_df, point_lst = get_data("SOLAR_HEAT_SUPPLY", start, end, DB["query"], TB["query"][block]["table"])
 
     result_df['HHWLoop_HeatLoad'] = (result_df[point_lst[0]] - result_df[point_lst[1]]) * 4.186 * (
             result_df[point_lst[2]] - result_df[point_lst[3]]
@@ -2472,23 +2494,25 @@ def get_kamba_solar_heat_supply(start, end, block="kamba"):
 
 
 @log_hint
-def get_kamba_heat_supply(start, end, block="kamba"):
+def get_kamba_heat_supply(start, end, block="kamba", print_mode=False, log_mode=False):
     """岗巴 制热量情况
     :param block: 隶属 错那数据
     :param start: 开始时间
     :param end: 结束时间
+    :param print_mode: 结束时间
+    :param log_mode: 结束时间
     :return: 包含时数据和日数据的字典
         time_data: 日期
         rate: 供热率
         # heat_supply: 供热量
         power_consume: 水源热泵耗电量
     """
-    load_df, load_point_lst = get_data("PIPE_NETWORK_HEATING", start, end, DB["query"], TB["query"][block])
+    load_df, load_point_lst = get_data("PIPE_NETWORK_HEATING", start, end, DB["query"], TB["query"][block]["table"])
     load_df['HHWLoop_HeatLoad'] = (load_df[load_point_lst[0]] - load_df[load_point_lst[1]]) * 4.186 * (
             load_df[load_point_lst[2]] - load_df[load_point_lst[3]]
     ) / 3.6
 
-    power_df, power_point_lst = get_data("WSHP_POWER_CONSUME", start, end, DB["query"], TB["query"][block])
+    power_df, power_point_lst = get_data("WSHP_POWER_CONSUME", start, end, DB["query"], TB["query"][block]["table"])
 
     power_df["power"] = power_df.sum(axis=1)
 
@@ -2538,13 +2562,13 @@ def get_kamba_heat_supply(start, end, block="kamba"):
 
     data = {
         "hours_data": {
-            "time_data": get_time_in_datetime(hours_df, "h"),
+            "time_data": get_time_in_datetime(hours_load, "h"),
             "heat_supply_rate": hours_rate.replace([np.inf, -np.inf], np.nan).values,
             # "heat_supply": hours_heat_supply,
             "power_consume": hours_power_consume.values
         },
         "days_data": {
-            "time_data": get_time_in_datetime(days_df, "d"),
+            "time_data": get_time_in_datetime(days_load, "d"),
             "heat_supply_rate": days_rate.replace([np.inf, -np.inf], np.nan).values,
             # "heat_supply": days_heat_supply,
             "power_consume": days_power_consume.values
@@ -2554,17 +2578,19 @@ def get_kamba_heat_supply(start, end, block="kamba"):
 
 
 @log_hint
-def get_kamba_cost_saving(start, end, block="kamba"):
+def get_kamba_cost_saving(start, end, block="kamba", print_mode=False, log_mode=False):
     """岗巴 节省电费
     :param block: 隶属 错那数据
     :param start: 开始时间
     :param end: 结束时间
+    :param print_mode: 结束时间
+    :param log_mode: 结束时间
     :return: 包含时数据和日数据的字典
         time_data: 日期
         cost_saving: 节省电费
         power_consumption: 耗电量
     """
-    result_df, point_lst = get_data("COST_SAVING", start, end, DB["query"], TB["query"][block])
+    result_df, point_lst = get_data("COST_SAVING", start, end, DB["query"], TB["query"][block]["table"])
 
     result_df['WSHP_HeatLoad'] = 4.186 * (
             result_df[point_lst[0]] * (result_df[point_lst[1]] - result_df[point_lst[2]]) +
@@ -2641,18 +2667,20 @@ def get_kamba_cost_saving(start, end, block="kamba"):
 
 
 @log_hint
-def get_kamba_co2_emission(start, end, block="kamba"):
+def get_kamba_co2_emission(start, end, block="kamba", print_mode=False, log_mode=False):
     """岗巴 co2减排量
     :param block: 隶属 错那数据
     :param start: 开始时间
     :param end: 结束时间
+    :param print_mode: 结束时间
+    :param log_mode: 结束时间
     :return: 包含时数据和日数据的字典
         time_data: 日期
         co2_power_consume: 耗电量
         co2_emission_reduction: co2减排量  需要计算累加值
         co2_equal_num: 等效种植树木数量
     """
-    result_df, point_lst = get_data("POWER_CONSUME", start, end, DB["query"], TB["query"][block])
+    result_df, point_lst = get_data("POWER_CONSUME", start, end, DB["query"], TB["query"][block]["table"])
     result_df = result_df.set_index("Timestamp", drop=True)
 
     # 数据填充 针对部分日期数据缺失
@@ -2707,17 +2735,19 @@ def get_kamba_co2_emission(start, end, block="kamba"):
 
 
 @log_hint
-def get_kamba_pool_temperature(start, end, block="kamba"):
+def get_kamba_pool_temperature(start, end, block="kamba", print_mode=False, log_mode=False):
     """岗巴 水池温度
     :param block: 隶属 错那数据
     :param start: 开始时间
     :param end: 结束时间
+    :param print_mode: 结束时间
+    :param log_mode: 结束时间
     :return: 包含时数据和日数据的字典
         time_data: 日期
         hours_data: 各水池时平均温度字典
         days_data: 各水池日平均温度字典
     """
-    result_df, point_lst = get_data("ALL_LEVEL_TEMP", start, end, DB["query"], TB["query"][block])
+    result_df, point_lst = get_data("ALL_LEVEL_TEMP", start, end, DB["query"], TB["query"][block]["table"])
 
     agg_dic = {k: "mean" for k in result_df.columns if k != "Timestamp"}
     hours_df = resample_data_by_hours(result_df, "Timestamp", agg_dic).reset_index()
@@ -2741,9 +2771,11 @@ def get_kamba_pool_temperature(start, end, block="kamba"):
 # ======================================================================================================================
 
 # ==============================================  天津 统计项目  =========================================================
+
+
 @log_hint
 def get_fan_frequency(start, end, block="tianjin"):
-    result_df = get_data("FAN_FREQUENCY", start, end, DB["query"], TB["query"][block])
+    result_df = get_data("FAN_FREQUENCY", start, end, DB["query"], TB["query"][block]["table"])
     result_df = result_df / 50
     data = {
         "time_data": [
@@ -2762,7 +2794,7 @@ def get_fan_frequency(start, end, block="tianjin"):
 
 @log_hint
 def get_cold_water_valve(start, end, block="tianjin"):
-    result_df = get_data("COLD_WATER_VALVE", start, end, DB["query"], TB["query"][block])
+    result_df = get_data("COLD_WATER_VALVE", start, end, DB["query"], TB["query"][block]["table"])
     context = {
         "MAU-201-CW-V": "MAU-201-HZ-V",
         "MAU-202-CW-V": "MAU-202-HZ-V",
@@ -2792,7 +2824,7 @@ def get_cold_water_valve(start, end, block="tianjin"):
 
 @log_hint
 def get_hot_water_valve(start, end, block="tianjin"):
-    result_df = get_data("HOT_WATER_VALVE", start, end, DB["query"], TB["query"][block])
+    result_df = get_data("HOT_WATER_VALVE", start, end, DB["query"], TB["query"][block]["table"])
     context = {
         "MAU-201-HW-V": "MAU-201-HZ-V",
         "MAU-202-HW-V": "MAU-202-HZ-V",
@@ -2822,7 +2854,7 @@ def get_hot_water_valve(start, end, block="tianjin"):
 
 @log_hint
 def get_air_supply_pressure(start, end, block="tianjin"):
-    result_df = get_data("AIR_SUPPLY_PRESSURE", start, end, DB["query"], TB["query"][block])
+    result_df = get_data("AIR_SUPPLY_PRESSURE", start, end, DB["query"], TB["query"][block]["table"])
     context = {
         "MAU-201-SA-P": "MAU-201-HZ-V",
         "MAU-202-SA-P": "MAU-202-HZ-V",
@@ -2852,7 +2884,7 @@ def get_air_supply_pressure(start, end, block="tianjin"):
 
 @log_hint
 def get_air_supply_humidity(start, end, block="tianjin"):
-    result_df = get_data("AIR_SUPPLY_HUMIDITY", start, end, DB["query"], TB["query"][block])
+    result_df = get_data("AIR_SUPPLY_HUMIDITY", start, end, DB["query"], TB["query"][block]["table"])
     context = {
         "MAU-201-SA-RH": "MAU-201-HZ-V",
         "MAU-202-SA-RH": "MAU-202-HZ-V",
@@ -2882,7 +2914,7 @@ def get_air_supply_humidity(start, end, block="tianjin"):
 
 @log_hint
 def get_air_supply_temperature(start, end, block="tianjin"):
-    result_df = get_data("AIR_SUPPLY_TEMPERATURE", start, end, DB["query"], TB["query"][block])
+    result_df = get_data("AIR_SUPPLY_TEMPERATURE", start, end, DB["query"], TB["query"][block]["table"])
     context = {
         "MAU-201-SA-T": "MAU-201-HZ-V",
         "MAU-202-SA-T": "MAU-202-HZ-V",
@@ -2912,7 +2944,7 @@ def get_air_supply_temperature(start, end, block="tianjin"):
 
 @log_hint
 def get_temperature_and_humidity(start, end, block="tianjin"):
-    result_df = get_data("TEMPERATURE_AND_HUMIDITY", start, end, DB["query"], TB["query"][block])
+    result_df = get_data("TEMPERATURE_AND_HUMIDITY", start, end, DB["query"], TB["query"][block]["table"])
     data = {
         "time_data": [
             datetime(
