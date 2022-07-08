@@ -125,7 +125,15 @@ class DataFormat:
         else:
             df = pd.read_csv(file, header=0, encoding='utf-8', index_col=0, parse_dates=True)  # 读取文件,不用转换
 
-        if self.data_check(df):
+        success = self.data_check(df)
+        choose = True
+        if not success:
+            # raise DataMissing("数据遗漏, 当前文件：{}".format(file))
+            log_or_print(self, "{} 数据遗漏".format(self.table_name))
+            choose = input("是否继续（y/n）")
+            if not choose or choose != "y":
+                choose = False
+        if choose:
             df = df.resample(self.fre).last()
             df.index.name = self.id_var
 
@@ -140,7 +148,7 @@ class DataFormat:
                 df["value"] = df["value"].astype("float64")
             return df
         else:
-            raise DataMissing("数据遗漏, 当前文件：{}".format(file))
+            exit()
 
     def get_tianjin_weather(self, time_data):
         eng = create_engine(

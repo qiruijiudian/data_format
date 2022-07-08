@@ -293,20 +293,20 @@ class DataCalc:
         sql_conf = get_sql_conf(DB["store"])
         tables = []
         for k1, v1 in TB["store"].items():
-
-            if isinstance(v1, dict):
-                # 错那、岗巴
-                for k2, v2 in v1.items():
-                    if isinstance(v2, dict):
-                        # 岗巴水池
-                        for k3, v3 in v2.items():
-                            tables.append(v3)
-                    else:
-                        # 错那
-                        tables.append(v2)
-            else:
-                # 天津
-                tables.append(v1)
+            if k1 == self.block:
+                if isinstance(v1, dict):
+                    # 错那、岗巴
+                    for k2, v2 in v1.items():
+                        if isinstance(v2, dict):
+                            # 岗巴水池
+                            for k3, v3 in v2.items():
+                                tables.append(v3)
+                        else:
+                            # 错那
+                            tables.append(v2)
+                else:
+                    # 天津
+                    tables.append(v1)
 
         now, num = datetime.today().strftime("%Y%m%d"), 1
         name = os.path.join(backup_path, "{}_{}.sql".format(self.block, now))
@@ -319,7 +319,7 @@ class DataCalc:
             sql_conf["user"],
             sql_conf["password"],
             DB["store"],
-            " ".join(tables[self.block]),
+            " ".join(tables),
             name
         )
         os.system(backup_sql)
@@ -329,3 +329,4 @@ class DataCalc:
                 name, datetime.today().strftime("%Y-%m-%d %H:%M:%S")
             )
         )
+

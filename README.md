@@ -42,4 +42,9 @@ python main.py
 
 ​    
 
-​     
+     ### 4. 数据库结构
+
+- data_center_original：原始值数据库，包含所有采样后的表格原始数据
+- data_center_statistical：公式计算值数据（长表格式）
+- data_center_user：用户数据库，保存用户账号信息
+- data_center_statistical_wide：宽表格式备份数据库
