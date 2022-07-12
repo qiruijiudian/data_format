@@ -65,7 +65,7 @@ class DataFormat:
         self.conn_conf = {
             "host": "localhost",
             "user": "root",
-            "password": "299521",
+            "password": "cdqr2008",
         } if platform.system() == "Windows" else {
             "host": "121.199.48.82",
             "user": "root",
@@ -371,6 +371,7 @@ class DataFormat:
             )
 
             if not success.strip():
+
                 items = self.get_data()
                 if self.insert_to_sql(items, engine):
                     self.original_table_backup()  # 备份

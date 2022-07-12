@@ -238,7 +238,7 @@ def get_sql_conf(db):
     if platform.system() == "Windows":
         return {
             "user": "root",
-            "password": "299521",
+            "password": "cdqr2008",
             "host": "localhost",
             "database": db,
         }
