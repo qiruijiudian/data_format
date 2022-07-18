@@ -233,22 +233,39 @@ def get_conn_by_key(key):
     )
 
 
-def get_sql_conf(db):
+def get_sql_conf(db, spec=False):
     # 获取数据库配置信息
-    if platform.system() == "Windows":
-        return {
-            "user": "root",
-            "password": "cdqr2008",
-            "host": "localhost",
-            "database": db,
-        }
+
+    if not spec:
+        if platform.system() == "Windows":
+            return {
+                "user": "root",
+                "password": "cdqr2008",
+                "host": "localhost",
+                "database": db,
+            }
+        else:
+            return {
+                "user": "root",
+                "password": "cdqr2008",
+                "host": "121.199.48.82",
+                "database": db
+            }
     else:
-        return {
-            "user": "root",
-            "password": "cdqr2008",
-            "host": "121.199.48.82",
-            "database": db
-        }
+        if spec == "Windows":
+            return {
+                "user": "root",
+                "password": "cdqr2008",
+                "host": "localhost",
+                "database": db,
+            }
+        else:
+            return {
+                "user": "root",
+                "password": "cdqr2008",
+                "host": "121.199.48.82",
+                "database": db
+            }
 
 
 # *****************************************     数据库配置    ************************************************************

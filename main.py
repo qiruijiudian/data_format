@@ -380,6 +380,7 @@ class DataFormat:
                     dc.update_realtime_data()   # 实时数据（公式计算）
 
                     dc.backup_statistics_data(self.statistics_backup)   # 计算值备份
+                    dc.backup_statistics_wide_data(self.statistics_backup)   # 计算值(宽表)备份
 
                     self.clear_backup()  # 清除备份
                     self.file_clear()   # 清除数据文件
