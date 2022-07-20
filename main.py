@@ -327,7 +327,7 @@ class DataFormat:
 
         while os.path.exists(name):
             num += 1
-            name = os.path.join(self.original_backup, "{}_{}({}).sql".format(self.table_name, now, num))
+            name = os.path.join(self.original_backup, "{}_{}[{}].sql".format(self.table_name, now, num))
 
         backup_sql = "mysqldump -u{} -p{} {} {} > {}".format(
             self.conn_conf["user"],

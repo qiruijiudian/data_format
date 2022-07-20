@@ -315,7 +315,7 @@ class DataCalc:
 
         while os.path.exists(name):
             num += 1
-            name = os.path.join(backup_path, "{}_{}({}).sql".format(self.block, now, num))
+            name = os.path.join(backup_path, "{}_{}[{}].sql".format(self.block, now, num))
 
         backup_sql = "mysqldump -u{} -p{} {} {} > {}".format(
             sql_conf["user"],
@@ -359,7 +359,7 @@ class DataCalc:
 
         while os.path.exists(name):
             num += 1
-            name = os.path.join(backup_path, "{}_wide_{}({}).sql".format(self.block, now, num))
+            name = os.path.join(backup_path, "{}_wide_{}[{}].sql".format(self.block, now, num))
 
         backup_sql = "mysqldump -u{} -p{} {} {} > {}".format(
             sql_conf["user"],
