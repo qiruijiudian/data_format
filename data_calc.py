@@ -3,7 +3,7 @@
 # @Time    : 2022/5/5 17:09
 # @Author  : MAYA
 import os
-
+import platform
 import pymysql
 import pandas as pd
 import traceback
@@ -162,8 +162,9 @@ class DataCalc:
     def update_history_data(self):
         # 更新历史数据
 
-        # 同步温度数据
-        self.sync_temp_data()
+        if platform.system() == "Windows":
+            # 同步温度数据
+            self.sync_temp_data()
 
         data_range = self.get_data_range("history")
         print(data_range)
@@ -279,8 +280,9 @@ class DataCalc:
     def update_realtime_data(self):
         # 更新实时数据
 
-        # 同步温度数据
-        self.sync_temp_data()
+        if platform.system() == "Windows":
+            # 同步温度数据
+            self.sync_temp_data()
 
         data_range = get_data_range("realtime")
         latest_time = data_range[self.block]["latest"] + timedelta(days=1)
@@ -420,4 +422,3 @@ class DataCalc:
             local_cur2.close()
 
 
-DataCalc("tianjin", True, False).update_history_data()

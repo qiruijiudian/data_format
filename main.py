@@ -179,7 +179,9 @@ class DataFormat:
                 dfs = pd.DataFrame()
                 for dir_path in os.listdir(self.data_path):
                     df = pd.DataFrame()
-                    files = glob.glob(self.data_path + "/" + dir_path + "/*." + self.file_type)
+                    com_file_types = "".join(["[{}{}]".format(item.lower(), item.upper()) for item in self.file_type])
+                    files = glob.glob("{}/{}/*.{}".format(self.data_path, dir_path, com_file_types))
+
                     for file in files:
                         point_mapping, res = get_point_mapping(file), []
                         if "AHU" in file and "AHU-402-3-HW-V" in df.columns:
@@ -226,7 +228,6 @@ class DataFormat:
 
                             dfs = pd.concat([dfs, df])
                         except:
-
                             import traceback
                             traceback.print_exc()
                             exit()
@@ -234,6 +235,7 @@ class DataFormat:
 
                         raise DataMissing("数据检查异常, 日期目录：{}".format(dir_path))
                     log_or_print(self, "{} 获取完成".format(dir_path))
+
                 dfs = dfs.reset_index()
                 dfs = dfs.melt(id_vars=self.id_var, var_name=self.var_name)
                 log_or_print(self, "数据全部获取完成{}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
