@@ -420,3 +420,4 @@ class DataCalc:
             local_cur2.close()
 
 
+DataCalc("tianjin", True, False).update_history_data()

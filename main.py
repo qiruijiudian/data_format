@@ -298,7 +298,12 @@ class DataFormat:
         res = []
         for backup_type in [self.original_backup, self.statistics_backup]:
             for file in os.listdir(backup_type):
-                dates_component = file.split("_")[1]
+                all_items = file.split("_")
+                if len(all_items) == 3:
+
+                    dates_component = file.split("_")[-1]
+                else:
+                    dates_component = file.split("_")[1]
                 dates = dates_component[:8]
 
                 date = datetime.strptime(dates, "%Y%m%d")
