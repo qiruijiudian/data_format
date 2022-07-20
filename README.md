@@ -42,7 +42,7 @@ python main.py
 
 ​    
 
-     ### 4. 数据库结构
+### 4. 数据库结构
 
 - data_center_original：原始值数据库，包含所有采样后的表格原始数据
 - data_center_statistical：公式计算值数据（长表格式）
