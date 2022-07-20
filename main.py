@@ -12,7 +12,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.dialects.mysql import DOUBLE, DATETIME, VARCHAR
 from configparser import ConfigParser
 from datetime import datetime, timedelta
-from tools import get_point_mapping, get_file_data, get_all_columns, DataMissing, log_or_print
+from tools import get_point_mapping, get_file_data, get_all_columns, DataMissing, log_or_print, sync_temp_data
 from data_calc import DataCalc
 
 
@@ -378,6 +378,10 @@ class DataFormat:
             )
 
             if not success.strip():
+
+                if platform.system() == "Windows":
+                    # 同步温度数据
+                    sync_temp_data()
 
                 items = self.get_data()
                 if self.insert_to_sql(items, engine):

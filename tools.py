@@ -234,7 +234,7 @@ def get_conn_by_key(key):
 
 
 def get_sql_conf(db, spec=False):
-    # 获取数据库配置信息
+    # 获取数据库配置信息 spec 是否指定为为Linux系统
 
     if not spec:
         if platform.system() == "Windows":
@@ -266,6 +266,43 @@ def get_sql_conf(db, spec=False):
                 "host": "121.199.48.82",
                 "database": db
             }
+
+
+def sync_temp_data():
+    local_weather_conf = get_sql_conf("weather")
+    with pymysql.connect(
+        user=local_weather_conf["user"],
+        password=local_weather_conf["password"],
+        host=local_weather_conf["host"],
+        database=local_weather_conf["database"]
+    ) as local_conn:
+        local_cur = local_conn.cursor()
+        local_cur.execute("select time from tianjin order by time desc limit 1;")
+        latest_weather = local_cur.fetchone()[0]
+        local_cur.close()
+
+    cloud_weather_conf = get_sql_conf("weather", True)
+    with pymysql.connect(
+            user=cloud_weather_conf["user"],
+            password=cloud_weather_conf["password"],
+            host=cloud_weather_conf["host"],
+            database=cloud_weather_conf["database"]
+    ) as cloud_conn:
+        cloud_cur = cloud_conn.cursor()
+        cloud_cur.execute("select time, temp, humidity from tianjin where time > '{}';".format(latest_weather))
+        new_items = cloud_cur.fetchall()
+        cloud_cur.close()
+
+    with pymysql.connect(
+        user=local_weather_conf["user"],
+        password=local_weather_conf["password"],
+        host=local_weather_conf["host"],
+        database=local_weather_conf["database"]
+    ) as local_conn2:
+        local_cur2 = local_conn2.cursor()
+        local_cur2.executemany("insert into tianjin(time, temp, humidity) values (%s, %s, %s);", new_items)
+        local_conn2.commit()
+        local_cur2.close()
 
 
 # *****************************************     数据库配置    ************************************************************

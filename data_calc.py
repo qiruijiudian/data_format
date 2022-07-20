@@ -162,10 +162,6 @@ class DataCalc:
     def update_history_data(self):
         # 更新历史数据
 
-        if platform.system() == "Windows":
-            # 同步温度数据
-            self.sync_temp_data()
-
         data_range = self.get_data_range("history")
         print(data_range)
 
@@ -280,10 +276,6 @@ class DataCalc:
     def update_realtime_data(self):
         # 更新实时数据
 
-        if platform.system() == "Windows":
-            # 同步温度数据
-            self.sync_temp_data()
-
         data_range = get_data_range("realtime")
         latest_time = data_range[self.block]["latest"] + timedelta(days=1)
         start = "{} 00:00:00".format(latest_time.strftime("%Y-%m-%d"))
@@ -383,42 +375,5 @@ class DataCalc:
                 name, datetime.today().strftime("%Y-%m-%d %H:%M:%S")
             )
         )
-
-    @staticmethod
-    def sync_temp_data():
-        local_weather_conf = get_sql_conf("weather")
-        with pymysql.connect(
-            user=local_weather_conf["user"],
-            password=local_weather_conf["password"],
-            host=local_weather_conf["host"],
-            database=local_weather_conf["database"]
-        ) as local_conn:
-            local_cur = local_conn.cursor()
-            local_cur.execute("select time from tianjin order by time desc limit 1;")
-            latest_weather = local_cur.fetchone()[0]
-            local_cur.close()
-
-        cloud_weather_conf = get_sql_conf("weather", "Linux")
-        with pymysql.connect(
-                user=cloud_weather_conf["user"],
-                password=cloud_weather_conf["password"],
-                host=cloud_weather_conf["host"],
-                database=cloud_weather_conf["database"]
-        ) as cloud_conn:
-            cloud_cur = cloud_conn.cursor()
-            cloud_cur.execute("select time, temp, humidity from tianjin where time > '{}';".format(latest_weather))
-            new_items = cloud_cur.fetchall()
-            cloud_cur.close()
-
-        with pymysql.connect(
-            user=local_weather_conf["user"],
-            password=local_weather_conf["password"],
-            host=local_weather_conf["host"],
-            database=local_weather_conf["database"]
-        ) as local_conn2:
-            local_cur2 = local_conn2.cursor()
-            local_cur2.executemany("insert into tianjin(time, temp, humidity) values (%s, %s, %s);", new_items)
-            local_conn2.commit()
-            local_cur2.close()
 
 
