@@ -129,7 +129,7 @@ class DataFormat:
         choose = True
         if not success:
             # raise DataMissing("数据遗漏, 当前文件：{}".format(file))
-            log_or_print(self, "{} 数据遗漏".format(self.table_name))
+            log_or_print(self, "{} 数据遗漏 当前文件：{}".format(self.table_name, file))
             choose = input("是否继续（y/n）")
             if not choose or choose != "y":
                 choose = False
@@ -145,6 +145,7 @@ class DataFormat:
             df = df.melt(id_vars=self.id_var, var_name=self.var_name)
             if df["value"].dtype == "object":
                 df["value"].replace("\s*\[u\.\]\s*", "", regex=True, inplace=True)
+                # df["value"].replace([np.inf, -np.inf], np.nan, inplace=True)
                 df["value"] = df["value"].astype("float64")
             return df
         else:

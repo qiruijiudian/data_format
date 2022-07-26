@@ -3,8 +3,8 @@
 # @Time    : 2022/5/5 17:09
 # @Author  : MAYA
 import os
-import platform
 import pymysql
+import numpy as np
 import pandas as pd
 import traceback
 from tools import DB, TB, check_time, get_dtype, get_data_range, get_sql_conf, log_or_print, \
@@ -194,6 +194,7 @@ class DataCalc:
                         data = items[v["data"]]
                         d_type = get_dtype(data.keys(), True)
                         df = pd.DataFrame(data)
+                        df = df.replace([np.inf, -np.inf], np.nan)
                         df.to_sql(name=TB["backup"][self.block][k], con=engine, if_exists="append", index=False,
                                   dtype=d_type)
                         log_or_print(self, "{} {} 上传完成（宽格式备份）".format(self.block, v["type"]))
@@ -209,6 +210,7 @@ class DataCalc:
                             data = pool_data[value["data"]]
                             pool_type = get_dtype(data.keys(), True)
                             pool_df = pd.DataFrame(data)
+                            pool_df = pool_df.replace([np.inf, -np.inf], np.nan)
                             pool_df.to_sql(
                                 name=TB["backup"][self.block]["pool_temperature"][key], con=engine,
                                 if_exists="append", index=False, dtype=pool_type
@@ -221,6 +223,7 @@ class DataCalc:
                     log_or_print(self, "天津数据开始上传（宽数据备份）")
                     d_type = get_dtype(items.keys(), True)
                     df = pd.DataFrame(items)
+                    df = df.replace([np.inf, -np.inf], np.nan)
                     df.to_sql(name=TB["backup"]["tianjin"], con=engine, if_exists="append", index=False, dtype=d_type)
                     log_or_print(self, "天津数据上传完成（宽格式备份）")
                 log_or_print(self, "数据 宽格式备份完成")
@@ -237,6 +240,7 @@ class DataCalc:
                         data = items[v["data"]]
                         d_type = get_dtype(data.keys())
                         df = pd.DataFrame(data).melt(id_vars="time_data", var_name="pointname")
+                        df = df.replace([np.inf, -np.inf], np.nan)
                         df.to_sql(name=TB["store"][self.block][k], con=engine, if_exists="append", index=False,
                                   dtype=d_type)
                         log_or_print(self, "{} {} 上传完成（长格式存储）".format(self.block, v["type"]))
@@ -251,6 +255,7 @@ class DataCalc:
                             data = pool_data[value["data"]]
                             pool_type = get_dtype(data.keys())
                             pool_df = pd.DataFrame(data).melt(id_vars="Timestamp", var_name="pointname")
+                            pool_df = pool_df.replace([np.inf, -np.inf], np.nan)
                             pool_df.to_sql(
                                 name=TB["store"][self.block]["pool_temperature"][key], con=engine,
                                 if_exists="append", index=False, dtype=pool_type
@@ -262,6 +267,7 @@ class DataCalc:
                     log_or_print(self, "天津数据开始上传（长格式存储）")
                     d_type = get_dtype(items.keys())
                     df = pd.DataFrame(items).melt(id_vars="time_data", var_name="pointname")
+                    df = df.replace([np.inf, -np.inf], np.nan)
                     df.to_sql(name=TB["store"]["tianjin"], con=engine, if_exists="append", index=False, dtype=d_type)
                     log_or_print(self, "天津数据上传完成（长格式存储）")
 
@@ -375,5 +381,3 @@ class DataCalc:
                 name, datetime.today().strftime("%Y-%m-%d %H:%M:%S")
             )
         )
-
-
