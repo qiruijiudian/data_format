@@ -103,7 +103,6 @@ class DataCalc:
             ]
             success, hours_time, days_time = check_time(items)
             if success:
-
                 for item in items:
                     for key in ["hours_data", "days_data"]:
                         if item.get(key):
@@ -112,8 +111,9 @@ class DataCalc:
                 # 获取日平均温度
                 days_temp = get_cona_temp(res["days_data"]["time_data"])
                 res["days_data"]["temp"] = days_temp
+
             else:
-                log_or_print(self, "数据获取失败")
+                log_or_print(self, "数据异常，数据长度不统一")
 
         elif self.block == "kamba":
             items = [
@@ -141,7 +141,7 @@ class DataCalc:
                             res[key].update(item[key])
 
             else:
-                log_or_print(self, "数据获取失败")
+                log_or_print(self, "数据异常，长度不一致")
 
         else:
             items = [
@@ -238,6 +238,10 @@ class DataCalc:
                     for k, v in context.items():
                         log_or_print(self, "{} {} 开始上传（长格式存储）".format(self.block, v["type"]))
                         data = items[v["data"]]
+
+                        print(type(data), data.keys())
+
+
                         d_type = get_dtype(data.keys())
                         df = pd.DataFrame(data).melt(id_vars="time_data", var_name="pointname")
                         df = df.replace([np.inf, -np.inf], np.nan)
@@ -381,3 +385,4 @@ class DataCalc:
                 name, datetime.today().strftime("%Y-%m-%d %H:%M:%S")
             )
         )
+

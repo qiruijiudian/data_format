@@ -775,6 +775,23 @@ def get_realtime_data_range():
             cur.close()
 
 
+def handing_missing_data(df, time_index):
+    df[time_index] = pd.to_datetime(df[time_index])
+    days = df.set_index(time_index).resample("D").count().index
+    time_data = [pd.to_datetime(item) for item in df[time_index]]
+    all_times = [
+        datetime(day.year, day.month, day.day, hour, minute)
+        for day in days for hour in range(24) for minute in [00, 15, 30, 45]
+    ]
+
+    for time in all_times:
+        if time not in time_data:
+            tmp_dic = {time_index: [time]}
+            tmp_dic.update({col: [np.nan] for col in df.columns if col != time_index})
+            df = df.append(pd.DataFrame(tmp_dic), ignore_index=True)
+    return df.sort_values(by=time_index).reset_index(drop=True)
+
+
 # 待修改
 def get_data(sql_key, start, end, db, tb):
     """查询数据库原始数据
@@ -799,7 +816,7 @@ def get_data(sql_key, start, end, db, tb):
             result_df = pd.read_sql(sql, con=conn).pivot(
                 index='time', columns='pointname', values='value'
             )
-            return result_df.reset_index()
+            return handing_missing_data(result_df.reset_index(), "time")
         elif "kamba" in tb:
             common_sql = SQL_CONTEXT[tb]["COMMON_SQL"]
             key_lst = SQL_CONTEXT[tb][sql_key]
@@ -808,7 +825,8 @@ def get_data(sql_key, start, end, db, tb):
             result_df = pd.read_sql(sql, con=conn).pivot(
                 index='Timestamp', columns='pointname', values='value'
             )
-            return result_df.reset_index(), key_lst
+
+            return handing_missing_data(result_df.reset_index(), "Timestamp"), key_lst
         elif "tianjin" in tb:
             common_sql = SQL_CONTEXT[tb]["COMMON_SQL"]
             key_lst = SQL_CONTEXT[tb][sql_key]
@@ -2341,6 +2359,8 @@ def get_kamba_end_supply_and_return_water_temp(start, end, block="kamba", print_
     """
     result_df, point_lst = get_data("END_SUPPLY_AND_RETURN_WATER_TEMPERATURE", start, end, DB["query"],
                                     TB["query"][block]["table"])
+
+    print(result_df)
 
     hours_df = resample_data_by_hours(
         result_df, "Timestamp",
