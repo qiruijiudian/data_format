@@ -526,9 +526,10 @@ select * from {} WHERE pointname in ('f3_WSHP004_F','f2_WSHP003_HHWLT','f3_WSHP0
         "AHU_COLD_WATER_VALVE": ['AHU-101-CW-V', 'AHU-102-CW-V', 'AHU-103-CW-V', 'AHU-104-CW-V', 'AHU-105-CW-V', 'AHU-106-CW-V', 'AHU-108-CW-V', 'AHU-109-CW-V', 'AHU-110-CW-V', 'AHU-201-CW-V', 'AHU-202-CW-V', 'AHU-203-CW-V', 'AHU-204-CW-V', 'AHU-205-CW-V', 'AHU-206-CW-V', 'AHU-207-1-CW-V', 'AHU-207-2-CW-V', 'AHU-207-3-CW-V', 'AHU-207-4-CW-V', 'AHU-207-5-CW-V', 'AHU-207-6-CW-V', 'AHU-207-7-CW-V', 'AHU-207-8-CW-V', 'AHU-209-CW-V', 'AHU-301-CW-V', 'AHU-302-CW-V', 'AHU-303-CW-V', 'AHU-401-CW-V', 'AHU-402-1-CW-V', 'AHU-402-2-CW-V', 'AHU-402-3-CW-V', 'AHU-402-4-CW-V'],
         "MAU_HOT_WATER_VALVE": ["MAU-201-HW-V", "MAU-202-HW-V", "MAU-203-HW-V", "MAU-301-HW-V", "MAU-401-HW-V", "MAU-201-HZ-V", "MAU-202-HZ-V", "MAU-203-HZ-V", "MAU-301-HZ-V", "MAU-401-HZ-V"],
         "AHU_HOT_WATER_VALVE": ['AHU-101-HW-V', 'AHU-102-HW-V', 'AHU-103-HW-V', 'AHU-104-HW-V', 'AHU-105-HW-V', 'AHU-106-HW-V', 'AHU-108-HW-V', 'AHU-109-HW-V', 'AHU-110-HW-V', 'AHU-201-HW-V', 'AHU-202-HW-V', 'AHU-203-HW-V', 'AHU-204-HW-V', 'AHU-205-HW-V', 'AHU-206-HW-V', 'AHU-207-1-HW-V', 'AHU-207-2-HW-V', 'AHU-207-3-HW-V', 'AHU-207-4-HW-V', 'AHU-207-5-HW-V', 'AHU-207-6-HW-V', 'AHU-207-7-HW-V', 'AHU-207-8-HW-V', 'AHU-209-HW-V', 'AHU-301-HW-V', 'AHU-302-HW-V', 'AHU-303-HW-V', 'AHU-401-HW-V', 'AHU-402-1-HW-V', 'AHU-402-2-HW-V', 'AHU-402-3-HW-V', 'AHU-402-4-HW-V'],
-        "AIR_SUPPLY_PRESSURE": ["MAU-201-SA-P", "MAU-202-SA-P", "MAU-203-SA-P", "MAU-301-SA-P", "MAU-401-SA-P", "MAU-201-HZ-V", "MAU-202-HZ-V", "MAU-203-HZ-V", "MAU-301-HZ-V", "MAU-401-HZ-V"],
-        "AIR_SUPPLY_HUMIDITY": ["MAU-201-SA-RH", "MAU-202-SA-RH", "MAU-203-SA-RH", "MAU-301-SA-RH", "MAU-401-SA-RH", "MAU-201-HZ-V", "MAU-202-HZ-V", "MAU-203-HZ-V", "MAU-301-HZ-V", "MAU-401-HZ-V"],
-        "AIR_SUPPLY_TEMPERATURE": ["MAU-201-SA-T", "MAU-202-SA-T", "MAU-203-SA-T", "MAU-301-SA-T", "MAU-401-SA-T", "MAU-201-HZ-V", "MAU-202-HZ-V", "MAU-203-HZ-V", "MAU-301-HZ-V", "MAU-401-HZ-V"],
+        "MAU_AIR_SUPPLY_PRESSURE": ["MAU-201-SA-P", "MAU-202-SA-P", "MAU-203-SA-P", "MAU-301-SA-P", "MAU-401-SA-P", "MAU-201-HZ-V", "MAU-202-HZ-V", "MAU-203-HZ-V", "MAU-301-HZ-V", "MAU-401-HZ-V"],
+        "AHU_AIR_SUPPLY_PRESSURE": ['AHU-101-SA-P', 'AHU-102-SA-P', 'AHU-103-SA-P', 'AHU-104-SA-P', 'AHU-105-SA-P', 'AHU-106-SA-P', 'AHU-108-SA-P', 'AHU-109-SA-P', 'AHU-110-SA-P', 'AHU-201-SA-P', 'AHU-202-SA-P', 'AHU-203-SA-P', 'AHU-204-SA-P', 'AHU-205-SA-P', 'AHU-206-SA-P', 'AHU-207-1-SA-P', 'AHU-207-2-SA-P', 'AHU-207-3-SA-P', 'AHU-207-4-SA-P', 'AHU-207-5-SA-P', 'AHU-207-6-SA-P', 'AHU-207-7-SA-P', 'AHU-207-8-SA-P', 'AHU-209-SA-P', 'AHU-301-SA-P', 'AHU-302-SA-P', 'AHU-303-SA-P', 'AHU-401-SA-P', 'AHU-402-1-SA-P', 'AHU-402-2-SA-P', 'AHU-402-3-SA-P', 'AHU-402-4-SA-P'],
+        "MAU_AIR_SUPPLY_HUMIDITY": ["MAU-201-SA-RH", "MAU-202-SA-RH", "MAU-203-SA-RH", "MAU-301-SA-RH", "MAU-401-SA-RH", "MAU-201-HZ-V", "MAU-202-HZ-V", "MAU-203-HZ-V", "MAU-301-HZ-V", "MAU-401-HZ-V"],
+        "MAU_AIR_SUPPLY_TEMPERATURE": ["MAU-201-SA-T", "MAU-202-SA-T", "MAU-203-SA-T", "MAU-301-SA-T", "MAU-401-SA-T", "MAU-201-HZ-V", "MAU-202-HZ-V", "MAU-203-HZ-V", "MAU-301-HZ-V", "MAU-401-HZ-V"],
         "TEMPERATURE_AND_HUMIDITY": ["temp", "humidity"],
         "AHU_RETURN_AIR_TEMPERATURE": ['AHU-101-RA-T', 'AHU-102-RA-T', 'AHU-103-RA-T', 'AHU-104-RA-T', 'AHU-105-RA-T', 'AHU-106-RA-T', 'AHU-108-RA-T', 'AHU-109-RA-T', 'AHU-110-RA-T', 'AHU-201-RA-T', 'AHU-202-RA-T', 'AHU-203-RA-T', 'AHU-204-RA-T', 'AHU-205-RA-T', 'AHU-206-RA-T', 'AHU-207-1-RA-T', 'AHU-207-2-RA-T', 'AHU-207-3-RA-T', 'AHU-207-4-RA-T', 'AHU-207-5-RA-T', 'AHU-207-6-RA-T', 'AHU-207-7-RA-T', 'AHU-207-8-RA-T', 'AHU-209-RA-T', 'AHU-301-RA-T', 'AHU-302-RA-T', 'AHU-303-RA-T', 'AHU-401-RA-T', 'AHU-402-1-RA-T', 'AHU-402-2-RA-T', 'AHU-402-3-RA-T', 'AHU-402-4-RA-T'],
         "AHU_RETURN_AIR_HUMIDITY": ['AHU-101-RA-RH', 'AHU-102-RA-RH', 'AHU-103-RA-RH', 'AHU-104-RA-RH', 'AHU-105-RA-RH', 'AHU-106-RA-RH', 'AHU-108-RA-RH', 'AHU-109-RA-RH', 'AHU-110-RA-RH', 'AHU-201-RA-RH', 'AHU-202-RA-RH', 'AHU-203-RA-RH', 'AHU-204-RA-RH', 'AHU-205-RA-RH', 'AHU-206-RA-RH', 'AHU-207-1-RA-RH', 'AHU-207-2-RA-RH', 'AHU-207-3-RA-RH', 'AHU-207-4-RA-RH', 'AHU-207-5-RA-RH', 'AHU-207-6-RA-RH', 'AHU-207-7-RA-RH', 'AHU-207-8-RA-RH', 'AHU-209-RA-RH', 'AHU-301-RA-RH', 'AHU-302-RA-RH', 'AHU-303-RA-RH', 'AHU-401-RA-RH', 'AHU-402-1-RA-RH', 'AHU-402-2-RA-RH', 'AHU-402-3-RA-RH', 'AHU-402-4-RA-RH']
@@ -606,8 +607,16 @@ VOLUME = [1031.370428, 1044.176354, 1057.061292, 1070.025243, 1083.068206, 1096.
           2214.799593, 2249.301815, 2284.070704, 2319.106259, 2354.408481, 2389.97737,
           2425.812926, 2461.915148, 2498.284037, 840.8894115]
 
+FREQUENCY_BEFORE_COMMISSIONING = 49  # Hz
+POWER_BEFORE_COMMISSIONING = 10.35  # kW
+LOWER_HUMIDITY_LIMIT = 45   # %
+UPPER_HUMIDITY_LIMIT = 60
+LOWER_TEMPERATURE_LIMIT = 18    # ℃
+UPPER_TEMPERATURE_LIMIT = 26
+REQUIRE_AIR_SUPPLY_VOLUME = 7651    # m³
 
 # **********************************    公式计算相关函数      *************************************************************
+
 
 class DataMissing(Exception):
     # 自定义数据缺失异常
@@ -2852,6 +2861,8 @@ def get_kamba_pool_temperature(start, end, block="kamba", print_mode=False, log_
 
 # ==============================================  天津 统计项目  =========================================================
 
+# MAU 数据板块
+
 
 @log_hint
 def get_mau_fan_frequency(start, end, block="tianjin"):
@@ -2869,23 +2880,6 @@ def get_mau_fan_frequency(start, end, block="tianjin"):
         "mau_fan_frequency_301": result_df["MAU-301-HZ-V"].values,
         "mau_fan_frequency_401": result_df["MAU-401-HZ-V"].values
     }
-    return data
-
-
-@log_hint
-def get_ahu_fan_frequency(start, end, block="tianjin"):
-    result_df = get_data("AHU_FAN_FREQUENCY", start, end, DB["query"], TB["query"][block]["table"])
-    data = {
-        "time_data": [
-            datetime(
-                year=item.year, month=item.month, day=item.day, hour=item.hour, minute=item.minute, second=item.second
-            ) for item in result_df.index
-        ]
-    }
-
-    for item in result_df.columns:
-        column_name = item.lstrip("AHU-").rstrip("-HZ-V")
-        data["mau_fan_frequency_{}".format(column_name)] = result_df[item].values
     return data
 
 
@@ -2920,25 +2914,6 @@ def get_mau_cold_water_valve(start, end, block="tianjin"):
 
 
 @log_hint
-def get_ahu_cold_water_valve(start, end, block="tianjin"):
-    result_df = get_data("AHU_COLD_WATER_VALVE", start, end, DB["query"], TB["query"][block]["table"])
-
-    data = {
-        "time_data": [
-            datetime(
-                year=item.year, month=item.month, day=item.day, hour=item.hour, minute=item.minute, second=item.second
-            ) for item in result_df.index
-        ]
-    }
-
-    for item in result_df.columns:
-        column_name = item.lstrip("AHU-").rstrip("-CW-V")
-        data["ahu_cold_water_valve_{}".format(column_name)] = result_df[item].values
-
-    return data
-
-
-@log_hint
 def get_mau_hot_water_valve(start, end, block="tianjin"):
     result_df = get_data("MAU_HOT_WATER_VALVE", start, end, DB["query"], TB["query"][block]["table"])
     context = {
@@ -2969,6 +2944,134 @@ def get_mau_hot_water_valve(start, end, block="tianjin"):
 
 
 @log_hint
+def get_mau_air_supply_pressure(start, end, block="tianjin"):
+    result_df = get_data("MAU_AIR_SUPPLY_PRESSURE", start, end, DB["query"], TB["query"][block]["table"])
+    context = {
+        "MAU-201-SA-P": "MAU-201-HZ-V",
+        "MAU-202-SA-P": "MAU-202-HZ-V",
+        "MAU-203-SA-P": "MAU-203-HZ-V",
+        "MAU-301-SA-P": "MAU-301-HZ-V",
+        "MAU-401-SA-P": "MAU-401-HZ-V"
+    }
+    for index in result_df.index:
+        for k, v in context.items():
+            if result_df.loc[index, v] == 0:
+                result_df.loc[index, k] = 0
+
+    data = {
+        "time_data": [
+            datetime(
+                year=item.year, month=item.month, day=item.day, hour=item.hour, minute=item.minute, second=item.second
+            ) for item in result_df.index
+        ],
+        "mau_air_supply_pressure_201": result_df["MAU-201-SA-P"].values,
+        "mau_air_supply_pressure_202": result_df["MAU-202-SA-P"].values,
+        "mau_air_supply_pressure_203": result_df["MAU-203-SA-P"].values,
+        "mau_air_supply_pressure_301": result_df["MAU-301-SA-P"].values,
+        "mau_air_supply_pressure_401": result_df["MAU-401-SA-P"].values,
+    }
+    return data
+
+
+@log_hint
+def get_mau_air_supply_humidity(start, end, block="tianjin"):
+    result_df = get_data("MAU_AIR_SUPPLY_HUMIDITY", start, end, DB["query"], TB["query"][block]["table"])
+    context = {
+        "MAU-201-SA-RH": "MAU-201-HZ-V",
+        "MAU-202-SA-RH": "MAU-202-HZ-V",
+        "MAU-203-SA-RH": "MAU-203-HZ-V",
+        "MAU-301-SA-RH": "MAU-301-HZ-V",
+        "MAU-401-SA-RH": "MAU-401-HZ-V"
+    }
+    for index in result_df.index:
+        for k, v in context.items():
+            if result_df.loc[index, v] == 0:
+                result_df.loc[index, k] = 0
+
+    data = {
+        "time_data": [
+            datetime(
+                year=item.year, month=item.month, day=item.day, hour=item.hour, minute=item.minute, second=item.second
+            ) for item in result_df.index
+        ],
+        "mau_air_supply_humidity_201": result_df["MAU-201-SA-RH"].values,
+        "mau_air_supply_humidity_202": result_df["MAU-202-SA-RH"].values,
+        "mau_air_supply_humidity_203": result_df["MAU-203-SA-RH"].values,
+        "mau_air_supply_humidity_301": result_df["MAU-301-SA-RH"].values,
+        "mau_air_supply_humidity_401": result_df["MAU-401-SA-RH"].values,
+    }
+    return data
+
+
+@log_hint
+def get_mau_air_supply_temperature(start, end, block="tianjin"):
+    result_df = get_data("MAU_AIR_SUPPLY_TEMPERATURE", start, end, DB["query"], TB["query"][block]["table"])
+    context = {
+        "MAU-201-SA-T": "MAU-201-HZ-V",
+        "MAU-202-SA-T": "MAU-202-HZ-V",
+        "MAU-203-SA-T": "MAU-203-HZ-V",
+        "MAU-301-SA-T": "MAU-301-HZ-V",
+        "MAU-401-SA-T": "MAU-401-HZ-V"
+    }
+    for index in result_df.index:
+        for k, v in context.items():
+            if result_df.loc[index, v] == 0:
+                result_df.loc[index, k] = 0
+
+    data = {
+        "time_data": [
+            datetime(
+                year=item.year, month=item.month, day=item.day, hour=item.hour, minute=item.minute, second=item.second
+            ) for item in result_df.index
+        ],
+        "mau_air_supply_temperature_201": result_df["MAU-201-SA-T"].values,
+        "mau_air_supply_temperature_202": result_df["MAU-202-SA-T"].values,
+        "mau_air_supply_temperature_203": result_df["MAU-203-SA-T"].values,
+        "mau_air_supply_temperature_301": result_df["MAU-301-SA-T"].values,
+        "mau_air_supply_temperature_401": result_df["MAU-401-SA-T"].values,
+    }
+    return data
+
+
+# AHU 数据板块
+
+@log_hint
+def get_ahu_fan_frequency(start, end, block="tianjin"):
+    result_df = get_data("AHU_FAN_FREQUENCY", start, end, DB["query"], TB["query"][block]["table"])
+    data = {
+        "time_data": [
+            datetime(
+                year=item.year, month=item.month, day=item.day, hour=item.hour, minute=item.minute, second=item.second
+            ) for item in result_df.index
+        ]
+    }
+
+    for item in result_df.columns:
+        column_name = item.lstrip("AHU-").rstrip("-HZ-V")
+        data["mau_fan_frequency_{}".format(column_name)] = result_df[item].values
+    return data
+
+
+@log_hint
+def get_ahu_cold_water_valve(start, end, block="tianjin"):
+    result_df = get_data("AHU_COLD_WATER_VALVE", start, end, DB["query"], TB["query"][block]["table"])
+
+    data = {
+        "time_data": [
+            datetime(
+                year=item.year, month=item.month, day=item.day, hour=item.hour, minute=item.minute, second=item.second
+            ) for item in result_df.index
+        ]
+    }
+
+    for item in result_df.columns:
+        column_name = item.lstrip("AHU-").rstrip("-CW-V")
+        data["ahu_cold_water_valve_{}".format(column_name)] = result_df[item].values
+
+    return data
+
+
+@log_hint
 def get_ahu_hot_water_valve(start, end, block="tianjin"):
     result_df = get_data("AHU_HOT_WATER_VALVE", start, end, DB["query"], TB["query"][block]["table"])
     data = {
@@ -2982,6 +3085,7 @@ def get_ahu_hot_water_valve(start, end, block="tianjin"):
     for item in result_df.columns:
         column_name = item.lstrip("AHU-").rstrip("-HW-V")
         data["ahu_hot_water_valve_{}".format(column_name)] = result_df[item].values
+    return data
 
 
 @log_hint
@@ -3019,94 +3123,48 @@ def get_ahu_return_air_humidity(start, end, block="tianjin"):
 
 
 @log_hint
-def get_air_supply_pressure(start, end, block="tianjin"):
-    result_df = get_data("AIR_SUPPLY_PRESSURE", start, end, DB["query"], TB["query"][block]["table"])
-    context = {
-        "MAU-201-SA-P": "MAU-201-HZ-V",
-        "MAU-202-SA-P": "MAU-202-HZ-V",
-        "MAU-203-SA-P": "MAU-203-HZ-V",
-        "MAU-301-SA-P": "MAU-301-HZ-V",
-        "MAU-401-SA-P": "MAU-401-HZ-V"
-    }
-    for index in result_df.index:
-        for k, v in context.items():
-            if result_df.loc[index, v] == 0:
-                result_df.loc[index, k] = 0
-
+def get_ahu_air_supply_pressure(start, end, block="tianjin"):
+    result_df = get_data("AHU_AIR_SUPPLY_PRESSURE", start, end, DB["query"], TB["query"][block]["table"])
     data = {
         "time_data": [
             datetime(
                 year=item.year, month=item.month, day=item.day, hour=item.hour, minute=item.minute, second=item.second
             ) for item in result_df.index
-        ],
-        "air_supply_pressure_201": result_df["MAU-201-SA-P"].values,
-        "air_supply_pressure_202": result_df["MAU-202-SA-P"].values,
-        "air_supply_pressure_203": result_df["MAU-203-SA-P"].values,
-        "air_supply_pressure_301": result_df["MAU-301-SA-P"].values,
-        "air_supply_pressure_401": result_df["MAU-401-SA-P"].values,
+        ]
     }
+
+    for item in result_df.columns:
+        column_name = item.lstrip("AHU-").rstrip("-SA-P")
+        data["ahu_air_supply_pressure_{}".format(column_name)] = result_df[item].values
     return data
 
 
 @log_hint
-def get_air_supply_humidity(start, end, block="tianjin"):
-    result_df = get_data("AIR_SUPPLY_HUMIDITY", start, end, DB["query"], TB["query"][block]["table"])
-    context = {
-        "MAU-201-SA-RH": "MAU-201-HZ-V",
-        "MAU-202-SA-RH": "MAU-202-HZ-V",
-        "MAU-203-SA-RH": "MAU-203-HZ-V",
-        "MAU-301-SA-RH": "MAU-301-HZ-V",
-        "MAU-401-SA-RH": "MAU-401-HZ-V"
-    }
-    for index in result_df.index:
-        for k, v in context.items():
-            if result_df.loc[index, v] == 0:
-                result_df.loc[index, k] = 0
+def get_ahu_other(start, end, block="tianjin"):
 
+    result_df = get_data("AHU_FAN_FREQUENCY", start, end, DB["query"], TB["query"][block]["table"])
     data = {
         "time_data": [
             datetime(
                 year=item.year, month=item.month, day=item.day, hour=item.hour, minute=item.minute, second=item.second
             ) for item in result_df.index
-        ],
-        "air_supply_humidity_201": result_df["MAU-201-SA-RH"].values,
-        "air_supply_humidity_202": result_df["MAU-202-SA-RH"].values,
-        "air_supply_humidity_203": result_df["MAU-203-SA-RH"].values,
-        "air_supply_humidity_301": result_df["MAU-301-SA-RH"].values,
-        "air_supply_humidity_401": result_df["MAU-401-SA-RH"].values,
+        ]
     }
+
+    for item in result_df.columns:
+        column_name = item.lstrip("AHU-").rstrip("-HZ-V")
+        data["ahu_air_delivery_volume_{}".format(column_name)] = (result_df[item] * 9000 / 50).values
+        data["ahu_actual_power_{}".format(column_name)] = (((result_df[item] / 50) ** 3) * 11).values
+        data["ahu_electricity_saving_{}".format(column_name)] = (
+                (
+                        (10.35 - ((result_df[item] / 50) ** 3) * 11) / 12
+                ) * 0.67
+        ).values
+
     return data
 
 
-@log_hint
-def get_air_supply_temperature(start, end, block="tianjin"):
-    result_df = get_data("AIR_SUPPLY_TEMPERATURE", start, end, DB["query"], TB["query"][block]["table"])
-    context = {
-        "MAU-201-SA-T": "MAU-201-HZ-V",
-        "MAU-202-SA-T": "MAU-202-HZ-V",
-        "MAU-203-SA-T": "MAU-203-HZ-V",
-        "MAU-301-SA-T": "MAU-301-HZ-V",
-        "MAU-401-SA-T": "MAU-401-HZ-V"
-    }
-    for index in result_df.index:
-        for k, v in context.items():
-            if result_df.loc[index, v] == 0:
-                result_df.loc[index, k] = 0
-
-    data = {
-        "time_data": [
-            datetime(
-                year=item.year, month=item.month, day=item.day, hour=item.hour, minute=item.minute, second=item.second
-            ) for item in result_df.index
-        ],
-        "air_supply_temperature_201": result_df["MAU-201-SA-T"].values,
-        "air_supply_temperature_202": result_df["MAU-202-SA-T"].values,
-        "air_supply_temperature_203": result_df["MAU-203-SA-T"].values,
-        "air_supply_temperature_301": result_df["MAU-301-SA-T"].values,
-        "air_supply_temperature_401": result_df["MAU-401-SA-T"].values,
-    }
-    return data
-
+# 公共数据板块
 
 @log_hint
 def get_temperature_and_humidity(start, end, block="tianjin"):
@@ -3121,6 +3179,7 @@ def get_temperature_and_humidity(start, end, block="tianjin"):
         "air_humidity": result_df["humidity"].values,
     }
     return data
+
 
 # ======================================================================================================================
 # ======================================================================================================================

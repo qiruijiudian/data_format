@@ -13,10 +13,13 @@ from tools import DB, TB, check_time, get_dtype, get_data_range, get_sql_conf, l
     get_cona_sub_water_source_cop, get_cona_room_network_water_supply_temperature, get_cona_temp, \
     get_kamba_heat_storage_heat, get_kamba_com_cop, get_kamba_wshp_cop, get_kamba_water_replenishment, \
     get_kamba_solar_matrix_supply_and_return_water_temperature, get_kamba_load, \
-    get_kamba_end_supply_and_return_water_temp, get_kamba_calories, get_kamba_solar_heat_supply, get_kamba_heat_supply,\
-    get_kamba_cost_saving, get_kamba_co2_emission, get_kamba_pool_temperature, get_mau_fan_frequency, \
-    get_ahu_fan_frequency, get_mau_cold_water_valve, get_ahu_cold_water_valve, get_mau_hot_water_valve, get_air_supply_pressure, get_ahu_return_air_temperature, get_ahu_return_air_humidity, get_air_supply_humidity,\
-    get_air_supply_temperature,  get_temperature_and_humidity, get_conn_by_key
+    get_kamba_end_supply_and_return_water_temp, get_kamba_calories, get_kamba_solar_heat_supply, get_kamba_heat_supply, \
+    get_kamba_cost_saving, get_kamba_co2_emission, get_kamba_pool_temperature, \
+    get_mau_fan_frequency,  get_mau_cold_water_valve, get_mau_hot_water_valve, get_mau_air_supply_pressure, \
+    get_mau_air_supply_humidity, get_mau_air_supply_temperature, \
+    get_ahu_fan_frequency, get_ahu_cold_water_valve, get_ahu_hot_water_valve, get_ahu_air_supply_pressure, \
+    get_ahu_return_air_temperature, get_ahu_return_air_humidity, get_ahu_other, \
+    get_temperature_and_humidity, get_conn_by_key
 
 from datetime import timedelta, datetime
 
@@ -148,9 +151,16 @@ class DataCalc:
                 get_mau_fan_frequency(start, end),
                 get_mau_cold_water_valve(start, end),
                 get_mau_hot_water_valve(start, end),
-                get_air_supply_pressure(start, end),
-                get_air_supply_humidity(start, end),
-                get_air_supply_temperature(start, end),
+                get_mau_air_supply_pressure(start, end),
+                get_mau_air_supply_humidity(start, end),
+                get_mau_air_supply_temperature(start, end),
+                get_ahu_fan_frequency(start, end),
+                get_ahu_cold_water_valve(start, end),
+                get_ahu_hot_water_valve(start, end),
+                get_ahu_air_supply_pressure(start, end),
+                get_ahu_return_air_temperature(start, end),
+                get_ahu_return_air_humidity(start, end),
+                get_ahu_other(start, end),
                 get_temperature_and_humidity(start, end)
             ]
             res = {}
@@ -239,7 +249,6 @@ class DataCalc:
                         log_or_print(self, "{} {} 开始上传（长格式存储）".format(self.block, v["type"]))
                         data = items[v["data"]]
 
-                        print(type(data), data.keys())
 
 
                         d_type = get_dtype(data.keys())
@@ -387,5 +396,5 @@ class DataCalc:
         )
 
 
-a = get_ahu_return_air_humidity("2022-04-09 00:00:00", "2022-04-09 23:59:59")
-print(a)
+DataCalc("tianjin", True, False).update_history_data()
+# get_mau_fan_frequency("2022-04-09 00:00:00", "2022-07-30 23:59:59")

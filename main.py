@@ -388,11 +388,11 @@ class DataFormat:
                 if self.insert_to_sql(items, engine):
                     self.original_table_backup()  # 备份
 
-                    dc = DataCalc(self.table_name, self.print_mode, self.log_mode)
-                    dc.update_realtime_data()   # 实时数据（公式计算）
+                    # dc = DataCalc(self.table_name, self.print_mode, self.log_mode)
+                    # dc.update_realtime_data()   # 实时数据（公式计算）
 
-                    dc.backup_statistics_data(self.statistics_backup)   # 计算值备份
-                    dc.backup_statistics_wide_data(self.statistics_backup)   # 计算值(宽表)备份
+                    # dc.backup_statistics_data(self.statistics_backup)   # 计算值备份
+                    # dc.backup_statistics_wide_data(self.statistics_backup)   # 计算值(宽表)备份
 
                     self.clear_backup()  # 清除备份
                     self.file_clear()   # 清除数据文件
