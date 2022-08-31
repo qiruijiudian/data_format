@@ -3117,7 +3117,7 @@ def get_ahu_return_air_humidity(start, end, block="tianjin"):
     }
 
     for item in result_df.columns:
-        column_name = item.lstrip("AHU-").rstrip("-RA-T")
+        column_name = item.lstrip("AHU-").rstrip("-RA-RH")
         data["ahu_return_air_humidity_{}".format(column_name)] = result_df[item].values
     return data
 
