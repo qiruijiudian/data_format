@@ -15,12 +15,12 @@ from tools import DB, TB, check_time, get_dtype, get_data_range, get_sql_conf, l
     get_kamba_solar_matrix_supply_and_return_water_temperature, get_kamba_load, \
     get_kamba_end_supply_and_return_water_temp, get_kamba_calories, get_kamba_solar_heat_supply, get_kamba_heat_supply, \
     get_kamba_cost_saving, get_kamba_co2_emission, get_kamba_pool_temperature, \
-    get_mau_fan_frequency,  get_mau_cold_water_valve, get_mau_hot_water_valve, get_mau_air_supply_pressure, \
+    get_mau_fan_frequency, get_mau_cold_water_valve, get_mau_hot_water_valve, get_mau_air_supply_pressure, \
     get_mau_air_supply_humidity, get_mau_air_supply_temperature, \
     get_ahu_fan_frequency, get_ahu_cold_water_valve, get_ahu_hot_water_valve, get_ahu_air_supply_pressure, \
     get_ahu_return_air_temperature, get_ahu_return_air_humidity, get_ahu_other, \
-    get_temperature_and_humidity, get_conn_by_key
-
+    get_temperature_and_humidity, get_conn_by_key, REPORT_DB
+from data_report import store_report_data
 from datetime import timedelta, datetime
 
 
@@ -184,6 +184,9 @@ class DataCalc:
         # 长格式存储
         self.store_data(items, False)
 
+        # 数据报表数据
+        store_report_data(start, end, self.block, self.print_mode, self.log_mode)
+
     def store_data(self, items, backup=False):
 
         if backup:
@@ -249,8 +252,6 @@ class DataCalc:
                         log_or_print(self, "{} {} 开始上传（长格式存储）".format(self.block, v["type"]))
                         data = items[v["data"]]
 
-
-
                         d_type = get_dtype(data.keys())
                         df = pd.DataFrame(data).melt(id_vars="time_data", var_name="pointname")
                         df = df.replace([np.inf, -np.inf], np.nan)
@@ -304,8 +305,10 @@ class DataCalc:
         # 宽表备份
         self.store_data(items, True)
 
-        # 长格式存储
         self.store_data(items, False)
+
+        # 数据报表数据
+        store_report_data(start, end, self.block, self.print_mode, self.log_mode)
 
     def backup_statistics_data(self, backup_path):
         if not os.path.exists(backup_path):
@@ -395,6 +398,57 @@ class DataCalc:
             )
         )
 
+    def backup_report_data(self, backup_path):
 
-DataCalc("tianjin", True, False).update_history_data()
-# get_mau_fan_frequency("2022-04-09 00:00:00", "2022-07-30 23:59:59")
+        if not os.path.exists(backup_path):
+            os.makedirs(backup_path)
+
+        report_sql_conf = get_sql_conf(REPORT_DB["store"])
+        report_wide_sql_conf = get_sql_conf(REPORT_DB["backup"])
+
+        tables = [self.block]
+
+        report_now, report_num = datetime.today().strftime("%Y%m%d"), 1
+        report_name = os.path.join(backup_path, "{}_{}.sql".format(self.block, report_now))
+
+        while os.path.exists(report_name):
+            report_num += 1
+            report_name = os.path.join(backup_path, "{}_{}[{}].sql".format(self.block, report_now, report_num))
+
+        report_wide_now, report_wide_num = datetime.today().strftime("%Y%m%d"), 1
+        report_wide_name = os.path.join(backup_path, "{}_wide_{}.sql".format(self.block, report_wide_now))
+
+        while os.path.exists(report_wide_name):
+            report_wide_num += 1
+            report_wide_name = os.path.join(backup_path, "{}_wide_{}[{}].sql".format(self.block, report_wide_now, report_wide_num))
+
+        report_backup_sql = "mysqldump -u{} -p{} {} {} > {}".format(
+            report_sql_conf["user"],
+            report_sql_conf["password"],
+            report_sql_conf["database"],
+            " ".join(tables),
+            report_name
+        )
+
+        report_wide_backup_sql = "mysqldump -u{} -p{} {} {} > {}".format(
+            report_wide_sql_conf["user"],
+            report_wide_sql_conf["password"],
+            report_wide_sql_conf["database"],
+            " ".join(tables),
+            report_wide_name
+        )
+        os.system(report_backup_sql)
+        log_or_print(
+            self,
+            "数据备份已完成 文件名：{}, 时间：{}".format(
+                report_name, datetime.today().strftime("%Y-%m-%d %H:%M:%S")
+            ), self.print_mode, self.log_mode
+        )
+
+        os.system(report_wide_backup_sql)
+        log_or_print(
+            self,
+            "数据备份已完成 文件名：{}, 时间：{}".format(
+                report_wide_name, datetime.today().strftime("%Y-%m-%d %H:%M:%S")
+            ), self.print_mode, self.log_mode
+        )

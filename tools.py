@@ -81,6 +81,30 @@ def log_or_print(obj, text, start=False, end=False):
             print("*" * 100)
 
 
+def log_or_print_without_obj(text, print_mode, log_mode, start=False, end=False):
+    """打印提示或者记录日志
+
+    :param obj: 调用对象
+    :param text: 信息
+    :param start: 是否为开始阶段（会首先打印一行*）
+    :param end: 是否为结束阶段（会在最后打印一行*）
+    """
+
+    if log_mode:
+        if start:
+            logging.info("*" * 100)
+        logging.info(text)
+        if end:
+            logging.info("*" * 100)
+
+    if print_mode:
+        if start:
+            print("*" * 100)
+        print(text)
+        if end:
+            print("*" * 100)
+
+
 def get_file_data(file, point_mapping):
     """获取天津数据
 
@@ -533,6 +557,85 @@ select * from {} WHERE pointname in ('f3_WSHP004_F','f2_WSHP003_HHWLT','f3_WSHP0
         "TEMPERATURE_AND_HUMIDITY": ["temp", "humidity"],
         "AHU_RETURN_AIR_TEMPERATURE": ['AHU-101-RA-T', 'AHU-102-RA-T', 'AHU-103-RA-T', 'AHU-104-RA-T', 'AHU-105-RA-T', 'AHU-106-RA-T', 'AHU-108-RA-T', 'AHU-109-RA-T', 'AHU-110-RA-T', 'AHU-201-RA-T', 'AHU-202-RA-T', 'AHU-203-RA-T', 'AHU-204-RA-T', 'AHU-205-RA-T', 'AHU-206-RA-T', 'AHU-207-1-RA-T', 'AHU-207-2-RA-T', 'AHU-207-3-RA-T', 'AHU-207-4-RA-T', 'AHU-207-5-RA-T', 'AHU-207-6-RA-T', 'AHU-207-7-RA-T', 'AHU-207-8-RA-T', 'AHU-209-RA-T', 'AHU-301-RA-T', 'AHU-302-RA-T', 'AHU-303-RA-T', 'AHU-401-RA-T', 'AHU-402-1-RA-T', 'AHU-402-2-RA-T', 'AHU-402-3-RA-T', 'AHU-402-4-RA-T'],
         "AHU_RETURN_AIR_HUMIDITY": ['AHU-101-RA-RH', 'AHU-102-RA-RH', 'AHU-103-RA-RH', 'AHU-104-RA-RH', 'AHU-105-RA-RH', 'AHU-106-RA-RH', 'AHU-108-RA-RH', 'AHU-109-RA-RH', 'AHU-110-RA-RH', 'AHU-201-RA-RH', 'AHU-202-RA-RH', 'AHU-203-RA-RH', 'AHU-204-RA-RH', 'AHU-205-RA-RH', 'AHU-206-RA-RH', 'AHU-207-1-RA-RH', 'AHU-207-2-RA-RH', 'AHU-207-3-RA-RH', 'AHU-207-4-RA-RH', 'AHU-207-5-RA-RH', 'AHU-207-6-RA-RH', 'AHU-207-7-RA-RH', 'AHU-207-8-RA-RH', 'AHU-209-RA-RH', 'AHU-301-RA-RH', 'AHU-302-RA-RH', 'AHU-303-RA-RH', 'AHU-401-RA-RH', 'AHU-402-1-RA-RH', 'AHU-402-2-RA-RH', 'AHU-402-3-RA-RH', 'AHU-402-4-RA-RH']
+    },
+    "query": {
+        "kamba": {
+            "COMMON_SQL": """select * from {} where pointname in {} and Timestamp between '{}' and '{}'""",
+            "ALL_LEVEL_TEMP": list(chain(*[
+                            ['水池低位温度T{}'.format(num) for num in range(1, 17)],
+                            ['水池中位温度T{}'.format(num) for num in range(1, 13)],
+                            ['水池高位温度T{}'.format(num) for num in range(1, 13)]
+                        ])),
+            "SOLAR_HEAT_SUPPLY": ['管网回水主管,流量', '集水器旁通管,流量', '管网供水主管,温度TE-0701', '管网回水主管,温度TE-0702',
+                                  '辐射功率', '流量FM-0201', '太阳能矩阵回水总管，温度TE-050', '太阳能矩阵供水总管，温度TE-049',
+                                  '管网回水主管,流量', '集水器旁通管,流量', '管网供水主管,温度TE-0701', '管网回水主管,温度TE-0702',
+                                  '温度'],
+            "CALORIES": ['水源热泵-1冷凝器出口,流量', '水源热泵-1冷凝器出口,温度TE-0602', '水源热泵-1冷凝器进口,温度TE-0601',
+                     '水源热泵-2冷凝器出口,流量', '水源热泵-2冷凝器出口,温度TE-0604', '水源热泵-2冷凝器进口,温度TE-0603',
+                     '水源热泵-3冷凝器出口,流量', '水源热泵-3冷凝器出口,温度TE-0606', '水源热泵-3冷凝器进口,温度TE-0605',
+                     '水源热泵-4冷凝器出口,流量', '水源热泵-4冷凝器出口,温度TE-0608', '水源热泵-4冷凝器进口,温度TE-0607',
+                     '水源热泵-5冷凝器出口,流量', '水源热泵-5冷凝器出口,温度TE-0610', '水源热泵-5冷凝器进口,温度TE-0609',
+                     '水源热泵-6冷凝器出口,流量', '水源热泵-6冷凝器出口,温度TE-0612', '水源热泵-6冷凝器进口,温度TE-0611',
+                     '管网回水主管,流量', '水源热泵-1冷凝器出口,流量', '水源热泵-2冷凝器出口,流量', '水源热泵-4冷凝器出口,流量',
+                     '水源热泵-5冷凝器出口,流量', '水源热泵-6冷凝器出口,流量', '板换1-1二次侧出口,温度TE-0401',
+                     '板换1-2二次侧出口,温度TE-0402', '管网回水主管,温度TE-0702'],
+            "POOL_HEAT": ['管网回水主管,流量', '集水器旁通管,流量', '管网供水主管,温度TE-0701', '管网回水主管,温度TE-0702',
+                          '辐射功率', '流量FM-0201', '太阳能矩阵回水总管，温度TE-050', '太阳能矩阵供水总管，温度TE-049',
+                                  '管网回水主管,流量', '集水器旁通管,流量', '管网供水主管,温度TE-0701', '管网回水主管,温度TE-0702',
+                                  '温度', '水源热泵-1冷凝器出口,流量', '水源热泵-1冷凝器出口,温度TE-0602',
+                          '水源热泵-1冷凝器进口,温度TE-0601', '水源热泵-2冷凝器出口,流量', '水源热泵-2冷凝器出口,温度TE-0604',
+                          '水源热泵-2冷凝器进口,温度TE-0603', '水源热泵-3冷凝器出口,流量', '水源热泵-3冷凝器出口,温度TE-0606',
+                          '水源热泵-3冷凝器进口,温度TE-0605', '水源热泵-4冷凝器出口,流量', '水源热泵-4冷凝器出口,温度TE-0608',
+                          '水源热泵-4冷凝器进口,温度TE-0607', '水源热泵-5冷凝器出口,流量', '水源热泵-5冷凝器出口,温度TE-0610',
+                          '水源热泵-5冷凝器进口,温度TE-0609', '水源热泵-6冷凝器出口,流量', '水源热泵-6冷凝器出口,温度TE-0612',
+                          '水源热泵-6冷凝器进口,温度TE-0611', '管网回水主管,流量', '水源热泵-1冷凝器出口,流量',
+                          '水源热泵-2冷凝器出口,流量', '水源热泵-4冷凝器出口,流量', '水源热泵-5冷凝器出口,流量',
+                          '水源热泵-6冷凝器出口,流量', '板换1-1二次侧出口,温度TE-0401', '板换1-2二次侧出口,温度TE-0402',
+                          '管网回水主管,温度TE-0702', "冷却塔风机1频率", "冷却塔风机2频率", "8-1:泵频率反馈", "8-2:泵频率反馈",
+                          "8-3:泵频率反馈"],
+            "COST_SAVING": [
+                '水源热泵-1冷凝器出口,流量', '水源热泵-1冷凝器出口,温度TE-0602', '水源热泵-1冷凝器进口,温度TE-0601',
+                '水源热泵-2冷凝器出口,流量', '水源热泵-2冷凝器出口,温度TE-0604', '水源热泵-2冷凝器进口,温度TE-0603',
+                '水源热泵-3冷凝器出口,流量', '水源热泵-3冷凝器出口,温度TE-0606', '水源热泵-3冷凝器进口,温度TE-0605',
+                '水源热泵-4冷凝器出口,流量', '水源热泵-4冷凝器出口,温度TE-0608', '水源热泵-4冷凝器进口,温度TE-0607',
+                '水源热泵-5冷凝器出口,流量', '水源热泵-5冷凝器出口,温度TE-0610', '水源热泵-5冷凝器进口,温度TE-0609',
+                '水源热泵-6冷凝器出口,流量', '水源热泵-6冷凝器出口,温度TE-0612', '水源热泵-6冷凝器进口,温度TE-0611',
+                '管网回水主管,流量', '水源热泵-1冷凝器出口,流量', '水源热泵-2冷凝器出口,流量', '水源热泵-4冷凝器出口,流量',
+                '水源热泵-5冷凝器出口,流量', '水源热泵-6冷凝器出口,流量', '板换1-1二次侧出口,温度TE-0401',
+                '板换1-2二次侧出口,温度TE-0402', '管网回水主管,温度TE-0702',
+                '水源热泵冷凝侧1-1电度量', '水源热泵冷凝侧1-2电度量', '水源热泵冷凝侧1-3电度量', '水源热泵冷凝侧1-4电度量',
+                '水源热泵冷凝侧1-5电度量', '水源热泵冷凝侧1-6电度量', '水源热泵冷凝侧1-7电度量', '水源热泵蒸发侧3-1电度量',
+                '水源热泵蒸发侧3-2电度量', '水源热泵蒸发侧3-3电度量', '水源热泵蒸发侧3-4电度量', '水源热泵蒸发侧3-5电度量',
+                '水源热泵蒸发侧3-6电度量', '水源热泵蒸发侧3-7电度量', '供热主泵4-1电度量', '供热主泵4-2电度量',
+                '供热主泵4-3电度量', '供热主泵4-4电度量', '循环泵10-1电度量', '循环泵10-2电度量', '循环泵10-3电度量',
+                '循环泵10-4电度量', '冷却塔循环14-1电度量', '冷却塔循环14-2电度量', '冷却塔循环14-3电度量',
+                '蓄热水池放热5-1电度量', '水源热泵1电量', '水源热泵2电量', '水源热泵3电量', '水源热泵4电量', '水源热泵5电量',
+                '水源热泵6电量'],
+            "PIPE_NETWORK_HEATING": ['管网回水主管,流量', '集水器旁通管,流量', '管网供水主管,温度TE-0701', '管网回水主管,温度TE-0702'],
+            "WSHP_POWER_CONSUME": [
+                '水源热泵冷凝侧1-1电度量', '水源热泵冷凝侧1-2电度量', '水源热泵冷凝侧1-3电度量', '水源热泵冷凝侧1-4电度量', '水源热泵冷凝侧1-5电度量', '水源热泵冷凝侧1-6电度量',
+                '水源热泵冷凝侧1-7电度量', '水源热泵蒸发侧3-1电度量', '水源热泵蒸发侧3-2电度量', '水源热泵蒸发侧3-3电度量', '水源热泵蒸发侧3-4电度量', '水源热泵蒸发侧3-5电度量',
+                '水源热泵蒸发侧3-6电度量', '水源热泵蒸发侧3-7电度量'],
+            "COM_COP": ['管网回水主管,流量', '集水器旁通管,流量', '管网供水主管,温度TE-0701', '管网回水主管,温度TE-0702',
+                    '水源热泵冷凝侧1-1电度量', '水源热泵冷凝侧1-2电度量', '水源热泵冷凝侧1-3电度量', '水源热泵冷凝侧1-4电度量',
+                    '水源热泵冷凝侧1-5电度量', '水源热泵冷凝侧1-6电度量', '水源热泵冷凝侧1-7电度量', '水源热泵蒸发侧3-1电度量',
+                    '水源热泵蒸发侧3-2电度量', '水源热泵蒸发侧3-3电度量', '水源热泵蒸发侧3-4电度量', '水源热泵蒸发侧3-5电度量',
+                    '水源热泵蒸发侧3-6电度量', '水源热泵蒸发侧3-7电度量', '供热主泵4-1电度量', '供热主泵4-2电度量',
+                    '供热主泵4-3电度量', '供热主泵4-4电度量', '循环泵10-1电度量', '循环泵10-2电度量', '循环泵10-3电度量',
+                    '循环泵10-4电度量', '冷却塔循环14-1电度量', '冷却塔循环14-2电度量', '冷却塔循环14-3电度量',
+                    '蓄热水池放热5-1电度量', '水源热泵1电量', '水源热泵2电量', '水源热泵3电量', '水源热泵4电量', '水源热泵5电量',
+                    '水源热泵6电量'],
+            "POWER_CONSUME": ['水源热泵冷凝侧1-1电度量', '水源热泵冷凝侧1-2电度量', '水源热泵冷凝侧1-3电度量', '水源热泵冷凝侧1-4电度量',
+                    '水源热泵冷凝侧1-5电度量', '水源热泵冷凝侧1-6电度量', '水源热泵冷凝侧1-7电度量', '水源热泵蒸发侧3-1电度量',
+                    '水源热泵蒸发侧3-2电度量', '水源热泵蒸发侧3-3电度量', '水源热泵蒸发侧3-4电度量', '水源热泵蒸发侧3-5电度量',
+                    '水源热泵蒸发侧3-6电度量', '水源热泵蒸发侧3-7电度量', '供热主泵4-1电度量', '供热主泵4-2电度量',
+                    '供热主泵4-3电度量', '供热主泵4-4电度量', '循环泵10-1电度量', '循环泵10-2电度量', '循环泵10-3电度量',
+                    '循环泵10-4电度量', '冷却塔循环14-1电度量', '冷却塔循环14-2电度量', '冷却塔循环14-3电度量',
+                    '蓄热水池放热5-1电度量', '水源热泵1电量', '水源热泵2电量', '水源热泵3电量', '水源热泵4电量', '水源热泵5电量',
+                    '水源热泵6电量']
+        },
+        "cona": {},
+        "tianjin": {}
     }
 
 
@@ -543,7 +646,13 @@ POINT_DF = {"时间列 1": "Timestamp", "板换1/2串联调节阀,开度反馈AE
 DB = {
     "query": "data_center_original",
     "store": "data_center_statistical",
-    "backup": "data_center_statistical_wide"
+    "backup": "data_center_statistical_wide",
+}
+
+REPORT_DB = {
+    "query": "data_center_original",
+    "store": "data_report",
+    "backup": "data_report_wide"
 }
 
 TB = {
@@ -663,7 +772,10 @@ def resample_data_by_days(df, index, just_date=False, hours_op_dic=None, days_op
         Returns:
             错那数据则直接返回分组后的数据(DataFrame类型)，岗巴数据除DataFrame数据外还额外返回一个包含查询字段(转换后的英文)的列表
         """
-    df = df.set_index(pd.to_datetime(df[index]))
+    # df = df.set_index(pd.to_datetime(df[index]))
+    if index in df.columns:
+        df = df.set_index(pd.to_datetime(df[index]))
+
     if just_date:
         df = df.resample("D")
         if days_op_dic:
@@ -789,7 +901,10 @@ def get_realtime_data_range():
             cur.close()
 
 
-def handing_missing_data(df, time_index):
+def handing_missing_data(df, time_index, column_lst=None):
+    if time_index not in df.columns:
+        df = df.reset_index()
+
     df[time_index] = pd.to_datetime(df[time_index])
     days = df.set_index(time_index).resample("D").count().index
     time_data = [pd.to_datetime(item) for item in df[time_index]]
@@ -798,12 +913,54 @@ def handing_missing_data(df, time_index):
         for day in days for hour in range(24) for minute in [00, 15, 30, 45]
     ]
 
+    if column_lst:
+        columns = df.columns
+        for column in column_lst:
+            if column not in columns:
+                df[column] = np.nan
+
     for time in all_times:
         if time not in time_data:
             tmp_dic = {time_index: [time]}
             tmp_dic.update({col: [np.nan] for col in df.columns if col != time_index})
             df = df.append(pd.DataFrame(tmp_dic), ignore_index=True)
     return df.sort_values(by=time_index).reset_index(drop=True)
+
+
+def get_report_data(sql_key, block, start, end):
+    """查询数据库原始数据
+    :param sql_key: 用于查询完整SQL语句的key
+    :param start: 开始时间
+    :param end: 结束时间
+    :return: dataframe格式的数据内容CTF002_HZ
+    """
+    index_key = {"cona": "time", "kamba": "Timestamp", "tianjin": "date"}[block]
+    sql = SQL_CONTEXT["query"][block][sql_key]
+
+    conn = get_conn_by_key("query")
+
+    try:
+        if block == "kamba":
+            common_sql = SQL_CONTEXT["query"][block]["COMMON_SQL"]
+            key_lst = SQL_CONTEXT["query"][block][sql_key]
+            key_lst = [POINT_DF.get(item) for item in key_lst]
+            sql = common_sql.format(block, str(tuple(key_lst)), start, end)
+
+            res = handing_missing_data(
+                pd.read_sql(sql, con=conn).pivot(index=index_key, columns='pointname', values='value'), index_key, key_lst
+            ), key_lst
+
+        else:
+            sql = sql.format(block, start, end)
+            res = handing_missing_data(
+                pd.read_sql(sql, con=conn).pivot(index=index_key, columns='pointname', values='value'), index_key
+            )
+        # conn.close()
+        return res
+    except:
+        print("get_data report 异常")
+    finally:
+        conn.dispose()
 
 
 # 待修改
@@ -840,8 +997,8 @@ def get_data(sql_key, start, end, db, tb):
                 index='Timestamp', columns='pointname', values='value'
             )
 
-            return handing_missing_data(result_df.reset_index(), "Timestamp"), key_lst
-        elif "tianjin" in tb:
+            return handing_missing_data(result_df.reset_index(), "Timestamp", key_lst), key_lst
+        else:
             common_sql = SQL_CONTEXT[tb]["COMMON_SQL"]
             key_lst = SQL_CONTEXT[tb][sql_key]
             sql = common_sql.format(tb, str(tuple(key_lst)), start, end)
@@ -2374,8 +2531,6 @@ def get_kamba_end_supply_and_return_water_temp(start, end, block="kamba", print_
     """
     result_df, point_lst = get_data("END_SUPPLY_AND_RETURN_WATER_TEMPERATURE", start, end, DB["query"],
                                     TB["query"][block]["table"])
-
-    print(result_df)
 
     hours_df = resample_data_by_hours(
         result_df, "Timestamp",

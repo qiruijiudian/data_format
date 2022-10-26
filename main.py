@@ -59,6 +59,9 @@ class DataFormat:
         self.statistics_backup = cfg.get('data', 'statistics_backup').strip() if platform.system() == "Windows" else \
             os.path.join("/home/data_format", cfg.get('data', 'statistics_backup').strip())
 
+        self.report_backup = cfg.get('data', 'report_backup').strip() if platform.system() == "Windows" else \
+            os.path.join("/home/data_format", cfg.get('data', 'report_backup').strip())
+
         self.sheet_range = cfg.get('data', 'sheet_range').strip()   # sheet表区间
         self.need_convert = int(cfg.get('data', 'need_convert').strip())   # 是否需要转换列名称
         self.conf_file = config_file    # 配置文件
@@ -388,11 +391,12 @@ class DataFormat:
                 if self.insert_to_sql(items, engine):
                     self.original_table_backup()  # 备份
 
-                    # dc = DataCalc(self.table_name, self.print_mode, self.log_mode)
-                    # dc.update_realtime_data()   # 实时数据（公式计算）
+                    dc = DataCalc(self.table_name, self.print_mode, self.log_mode)
+                    dc.update_realtime_data()   # 实时数据（公式计算）
 
-                    # dc.backup_statistics_data(self.statistics_backup)   # 计算值备份
-                    # dc.backup_statistics_wide_data(self.statistics_backup)   # 计算值(宽表)备份
+                    dc.backup_statistics_data(self.statistics_backup)   # 计算值备份
+                    dc.backup_statistics_wide_data(self.statistics_backup)   # 计算值(宽表)备份
+                    dc.backup_report_data(self.report_backup)
 
                     self.clear_backup()  # 清除备份
                     self.file_clear()   # 清除数据文件
