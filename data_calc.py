@@ -7,7 +7,7 @@ import pymysql
 import numpy as np
 import pandas as pd
 import traceback
-from tools import DB, TB, check_time, get_dtype, get_data_range, get_sql_conf, log_or_print, \
+from tools import check_time, get_dtype, get_data_range, get_sql_conf, log_or_print, \
     get_cona_geothermal_wells_heat_provide, get_cona_com_cop, get_cona_cost_saving, get_cona_heat_provided, \
     get_cona_water_supply_return_temperature, get_cona_water_replenishment, get_cona_sub_com_cop, \
     get_cona_sub_water_source_cop, get_cona_room_network_water_supply_temperature, get_cona_temp, \
@@ -19,9 +19,10 @@ from tools import DB, TB, check_time, get_dtype, get_data_range, get_sql_conf, l
     get_mau_air_supply_humidity, get_mau_air_supply_temperature, \
     get_ahu_fan_frequency, get_ahu_cold_water_valve, get_ahu_hot_water_valve, get_ahu_air_supply_pressure, \
     get_ahu_return_air_temperature, get_ahu_return_air_humidity, get_ahu_other, \
-    get_temperature_and_humidity, get_conn_by_key, REPORT_DB
+    get_temperature_and_humidity, get_conn_by_key
 from data_report import store_report_data
 from datetime import timedelta, datetime
+from settings import REPORT_DB, DB, TB
 
 
 # ************************************************  公共函数  ************************************************************

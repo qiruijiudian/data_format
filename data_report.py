@@ -5,8 +5,9 @@
 import collections
 import numpy as np
 from datetime import datetime
+from settings import REPORT_DB, VOLUME
 from tools import get_report_data, resample_data_by_hours, resample_data_by_days, handing_missing_data, \
-    get_dtype, get_time_in_datetime, log_hint, get_custom_conn, get_sql_conf, REPORT_DB, log_or_print_without_obj, VOLUME
+    get_dtype, get_time_in_datetime, log_hint, get_custom_conn, get_sql_conf, log_or_print_without_obj
 import pandas as pd
 import os
 # ---------------------------------------------- Common  ----------------------------------------------------------------
