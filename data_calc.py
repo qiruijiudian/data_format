@@ -174,10 +174,21 @@ class DataCalc:
         # 更新历史数据
 
         data_range = self.get_data_range("history")
-        print(data_range)
 
         start = "{} 00:00:00".format(data_range[self.block]["start"].strftime("%Y-%m-%d"))
         end = "{} 23:59:59".format(data_range[self.block]["end"].strftime("%Y-%m-%d"))
+        items = self.data_collation(start, end)
+        # 宽表备份
+        self.store_data(items, True)
+
+        # 长格式存储
+        self.store_data(items, False)
+
+        # 数据报表数据
+        store_report_data(start, end, self.block, self.print_mode, self.log_mode)
+
+    def update_customization_data(self, start, end):
+
         items = self.data_collation(start, end)
         # 宽表备份
         self.store_data(items, True)
@@ -453,3 +464,7 @@ class DataCalc:
                 report_wide_name, datetime.today().strftime("%Y-%m-%d %H:%M:%S")
             ), self.print_mode, self.log_mode
         )
+
+
+# DataCalc("kamba", True, False).update_customization_data("2021/10/01 00:00:00", "2021/10/30 23:59:59")
+DataCalc("kamba", True, False).update_history_data()

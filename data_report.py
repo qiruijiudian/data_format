@@ -4,10 +4,11 @@
 # @Author  : MAYA
 import collections
 import numpy as np
-from datetime import datetime
-from settings import REPORT_DB, VOLUME
+from datetime import datetime, timedelta
+from settings import REPORT_DB, VOLUME, TIME_BEGIN
 from tools import get_report_data, resample_data_by_hours, resample_data_by_days, handing_missing_data, \
-    get_dtype, get_time_in_datetime, log_hint, get_custom_conn, get_sql_conf, log_or_print_without_obj
+    get_dtype, get_time_in_datetime, log_hint, get_custom_conn, get_sql_conf, log_or_print_without_obj, \
+    convert_str_2_datetime
 import pandas as pd
 import os
 # ---------------------------------------------- Common  ----------------------------------------------------------------
@@ -222,6 +223,7 @@ def get_kamba_pool_heat_data(start, end, block="kamba", print_mode=False, log_mo
     result_df["heat_output"] = result_df["WSHP_HeatLoad"] + result_df["power"]
     result_df["heat_input"] = result_df["heat_output"] + result_df["heat_loss"]
     result_df = result_df.loc[:, ["Timestamp", "tower_heat_dissipation", "heat_loss", "heat_output", "heat_input"]]
+    result_df.to_csv("data.csv")
 
     result_df = resample_data_by_days(
         result_df, "Timestamp", just_date=True, hours_op_dic=None, days_op_dic={
@@ -273,22 +275,24 @@ def get_kamba_cost_saving(start, end, block="kamba", print_mode=False, log_mode=
                          ) / 3.6
 
     tmp_df = result_df.loc[:, point_lst[27:]].sum(axis=1)
+    sys_power = tmp_df.diff()
+    t_start = convert_str_2_datetime(start)
+    t_begin = convert_str_2_datetime(TIME_BEGIN["kamba"])
 
-    next_num = tmp_df[0]
-
-    tmp_df = tmp_df.to_frame(name='SysPower')
-    tmp_df = pd.concat(
-        [
-            pd.DataFrame(np.array([next_num]).reshape(1, 1), columns=tmp_df.columns),
-            tmp_df
-        ]
-    ).diff()[1:]
+    if t_start > t_begin:
+        q_start = t_start - timedelta(hours=1)
+        q_end = t_start - timedelta(seconds=1)
+        q_df, q_lst = get_report_data("COST_SAVING", block, q_start, q_end)
+        prev_value = q_df.loc[:, [data for data in q_lst[27:]]].sum(axis=1).iloc[-1]
+        sys_power.iloc[0] = tmp_df.iloc[0] - prev_value
+    else:
+        sys_power.iloc[0] = sys_power.iloc[1]
 
     result_df = pd.concat(
         [
             result_df.loc[:, ['Timestamp', 'WSHP_HeatLoad']],
             result_df[['power']],
-            tmp_df
+            sys_power.to_frame(name="SysPower")
         ], axis=1
     )
 
@@ -352,11 +356,24 @@ def get_kamba_com_cop(start, end, block="kamba", print_mode=False, log_mode=Fals
     result_df['HHWLoop_HeatLoad'] = (result_df[point_lst[0]] - result_df[point_lst[1]]) * 4.186 * (
             result_df[point_lst[2]] - result_df[point_lst[3]]
     ) / 3.6
+
     tmp_df = result_df.loc[:, [data for data in point_lst[4:]]].sum(axis=1)
-    next_num = tmp_df[0]
-    tmp_df = tmp_df.to_frame(name='SysPower')
-    tmp_df = pd.concat([pd.DataFrame(np.array([next_num]).reshape(1, 1), columns=tmp_df.columns), tmp_df]).diff()[1:]
-    result_df = pd.concat([result_df.loc[:, ["Timestamp", "HHWLoop_HeatLoad"]], tmp_df], axis=1)
+    sys_power = tmp_df.diff()
+    t_start = convert_str_2_datetime(start)
+    t_begin = convert_str_2_datetime(TIME_BEGIN["kamba"])
+
+    if t_start > t_begin:
+        q_start = t_start - timedelta(hours=1)
+        q_end = t_start - timedelta(seconds=1)
+        q_df, q_lst = get_report_data("COM_COP", block, q_start, q_end)
+        prev_value = q_df.loc[:, [data for data in q_lst[4:]]].sum(axis=1).iloc[-1]
+        sys_power.iloc[0] = tmp_df.iloc[0] - prev_value
+    else:
+        sys_power.iloc[0] = sys_power.iloc[1]
+
+    result_df = pd.concat([result_df.loc[:, ['Timestamp', 'HHWLoop_HeatLoad']], sys_power.to_frame(name='SysPower')],
+                          axis=1)
+
     result_df = result_df.loc[:, ["Timestamp", "HHWLoop_HeatLoad", "SysPower"]]
 
     days_df = resample_data_by_days(
@@ -393,24 +410,66 @@ def get_kamba_co2_emission(start, end, block="kamba", print_mode=False, log_mode
         co2_emission_reduction: co2减排量  需要计算累加值
         co2_equal_num: 等效种植树木数量
     """
-    result_df, point_lst = get_report_data("POWER_CONSUME", block, start, end)
+    result_df, point_lst = get_report_data("COST_SAVING", block, start, end)
     result_df = result_df.set_index("Timestamp", drop=True)
 
-    result_df["power_consume"] = result_df.loc[:, point_lst].sum(axis=1)
-    result_df = result_df.loc[:, ["power_consume"]]
+    result_df['WSHP_HeatLoad'] = 4.186 * (
+            result_df[point_lst[0]] * (result_df[point_lst[1]] - result_df[point_lst[2]]) +
+            result_df[point_lst[3]] * (result_df[point_lst[4]] - result_df[point_lst[5]]) +
+            result_df[point_lst[6]] * (result_df[point_lst[7]] - result_df[point_lst[8]]) +
+            result_df[point_lst[9]] * (result_df[point_lst[10]] - result_df[point_lst[11]]) +
+            result_df[point_lst[12]] * (result_df[point_lst[13]] - result_df[point_lst[14]]) +
+            result_df[point_lst[15]] * (result_df[point_lst[16]] - result_df[point_lst[17]])
+    ) / 3.6
+    result_df['power'] = 4.186 * (
+            result_df[point_lst[18]] - result_df[point_lst[19]] - result_df[point_lst[20]] -
+            result_df[point_lst[21]] - result_df[point_lst[22]] - result_df[point_lst[23]]
+    ) * (
+                                 (result_df[point_lst[24]] + result_df[point_lst[25]]) / 2 - result_df[point_lst[26]]
+                         ) / 3.6
 
-    days_consume_items = collections.OrderedDict()
+    tmp_df = result_df.loc[:, point_lst[27:]].sum(axis=1)
+    sys_power = tmp_df.diff()
+    t_start = convert_str_2_datetime(start)
+    t_begin = convert_str_2_datetime(TIME_BEGIN["kamba"])
 
-    for day_index in result_df.index:
-        days_key = datetime(year=day_index.year, month=day_index.month, day=day_index.day)
-        if days_key not in days_consume_items:
-            days_consume_items[days_key] = [result_df.loc[day_index, "power_consume"]]
-        else:
-            days_consume_items[days_key].append(result_df.loc[day_index, "power_consume"])
-    days_co2_emission_reduction = [(item[-1] - item[0]) * 0.5839 for item in days_consume_items.values()]
+    if t_start > t_begin:
+        q_start = t_start - timedelta(hours=1)
+        q_end = t_start - timedelta(seconds=1)
+        q_df, q_lst = get_report_data("COST_SAVING", block, q_start, q_end)
+        prev_value = q_df.loc[:, [data for data in q_lst[27:]]].sum(axis=1).iloc[-1]
+        sys_power.iloc[0] = tmp_df.iloc[0] - prev_value
+    else:
+        sys_power.iloc[0] = sys_power.iloc[1]
+
+    result_df = pd.concat(
+        [
+            result_df.reset_index().loc[:, ['Timestamp', 'WSHP_HeatLoad']],
+            result_df[['power']],
+            sys_power.to_frame(name="SysPower")
+        ], axis=1
+    )
+
+    days_df = resample_data_by_days(
+        result_df, "Timestamp",
+        False,
+        {
+            'SysPower': 'sum',
+            'WSHP_HeatLoad': 'mean',
+            'power': 'mean'
+        },
+        {
+            'SysPower': 'sum',
+            'WSHP_HeatLoad': 'sum',
+            'power': 'sum'
+        }
+    )
+
+    days_co2_emission_reduction = (days_df["power"] + days_df["WSHP_HeatLoad"] - days_df["SysPower"]) * 0.5839
+
     data = {
-        "time_data": list(days_consume_items.keys()),
-        "co2_emission_reduction": days_co2_emission_reduction,
+        "time_data": get_time_in_datetime(days_df, "d"),
+        "co2_emission_reduction": days_co2_emission_reduction.values,
     }
     return data
 
@@ -496,3 +555,23 @@ def backup_report_data(block, backup_path, print_mode=False, log_mode=False):
     )
 
 
+# get_kamba_pool_heat_data("2021/05/11", "2021/07/11")
+# data = {}
+# for item in [
+# get_kamba_solar_thermal_data,
+# get_kamba_calories,
+# get_kamba_heat_storage_heat,
+# get_kamba_pool_heat_data,
+# get_kamba_cost_saving,
+# get_kamba_heat_supply,
+# get_kamba_com_cop,
+# get_kamba_co2_emission,
+# store_report_data,
+# backup_report_data
+# ]:
+#     data.update(item("2021/10/01 00:00:00", "2021/10/30 23:59:59"))
+#     print()
+
+
+# store_report_data("2021/10/01 00:00:00", "2021/10/03 23:59:59", "kamba")
+# get_kamba_co2_emission("2021/10/01 00:00:00", "2021/10/03 23:59:59")

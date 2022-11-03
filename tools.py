@@ -19,8 +19,8 @@ try:
     from StringIO import StringIO
 except ImportError:
     from io import StringIO
-from settings import DB, SQL_CONTEXT, POINT_DF, TB, VOLUME
-
+from settings import DB, SQL_CONTEXT, POINT_DF, TB, VOLUME, TIME_BEGIN
+from datetime import datetime, timedelta
 
 
 
@@ -348,6 +348,15 @@ def sync_temp_data():
         local_cur2.executemany("insert into tianjin(time, temp, humidity) values (%s, %s, %s);", new_items)
         local_conn2.commit()
         local_cur2.close()
+
+
+def convert_str_2_datetime(time):
+    t_type = "-" if "-" in time else "/"
+    if t_type == "-":
+        return datetime.strptime(time, "%Y-%m-%d %H:%M:%S")
+    else:
+        return datetime.strptime(time, "%Y/%m/%d %H:%M:%S")
+
 
 
 
@@ -1726,11 +1735,14 @@ def get_cona_temp(time_data, print_mode=False, log_mode=False):
 @log_hint
 def get_kamba_heat_storage_heat(start, end, block="kamba", print_mode=False, log_mode=False):
     """岗巴 蓄热水池可用热量
-    :param block: 隶属 错那数据
+
     :param start: 开始时间
+    :type start: str
     :param end: 结束时间
-    :param print_mode: 结束时间
-    :param log_mode: 结束时间
+    :type end: str
+    :param block: 数据隶属板块，如：错那数据
+    :param print_mode: 是否打印日志
+    :param log_mode: 是否记录日志
     :return: 包含时数据和日数据的字典
        time_data: 日期,
        low_heat_total:  蓄热水池可用低温热量
@@ -1742,6 +1754,7 @@ def get_kamba_heat_storage_heat(start, end, block="kamba", print_mode=False, log
     result_df = result_df.set_index(pd.to_datetime(result_df["Timestamp"]))
 
     columns = result_df.columns
+
     for item in point_lst:
         if item not in columns:
             result_df[item] = np.nan
@@ -1752,6 +1765,8 @@ def get_kamba_heat_storage_heat(start, end, block="kamba", print_mode=False, log
     days_high_df, days_low_df = pd.DataFrame(), pd.DataFrame()
     for point_index, point_item in enumerate(point_lst):
         days_heat_data = days_df[point_item].mean()
+        # print(days_heat_data)
+        # print("*" * 100)
         if not days_time_data:
             days_time_data = get_time_in_datetime(days_heat_data, "d")
 
@@ -1759,7 +1774,8 @@ def get_kamba_heat_storage_heat(start, end, block="kamba", print_mode=False, log
         for heat_index in days_heat_data.index:
             _high_heat = (days_heat_data[heat_index] - 45) * VOLUME[point_index] * 4.186 / 3.6
             tmp_high.append(_high_heat)
-            tmp_low.append((days_heat_data[heat_index] - 10) * VOLUME[point_index] * 4.186 / 3.6 - _high_heat)
+            t_value = (days_heat_data[heat_index] - 10) * VOLUME[point_index] * 4.186 / 3.6 - _high_heat
+            tmp_low.append(t_value if t_value > 0 else 0)
         days_high_heat.append(tmp_high)
         days_low_heat.append(tmp_low)
 
@@ -1768,6 +1784,7 @@ def get_kamba_heat_storage_heat(start, end, block="kamba", print_mode=False, log
             days_low_df["time_data"] = days_time_data
         days_high_df[point_item] = tmp_high
         days_low_df[point_item] = tmp_low
+
     days_low_heat_of_storage = days_low_df.loc[:, point_lst].sum(axis=1)
     days_high_heat_of_storage = days_high_df.loc[:, point_lst].sum(axis=1)
 
@@ -1777,7 +1794,7 @@ def get_kamba_heat_storage_heat(start, end, block="kamba", print_mode=False, log
         days_low_heat_total.append(sum([item[time_index] for item in days_low_heat]))
         days_high_heat_total.append(sum([item[time_index] for item in days_high_heat]))
     # days_heat_supply_days = [item / 2000 / 2400 for item in days_high_heat_total]
-    days_heat_supply_days = [item / 2000 / 2400 for item in days_high_heat_of_storage.values]
+    days_heat_supply_days = [item / 2000 / 24 for item in days_high_heat_of_storage.values]
 
     data["days_data"] = {
         "time_data": days_time_data,
@@ -1818,7 +1835,7 @@ def get_kamba_heat_storage_heat(start, end, block="kamba", print_mode=False, log
         hours_low_heat_total.append(sum([item[time_index] for item in hours_low_heat]))
         hours_high_heat_total.append(sum([item[time_index] for item in hours_high_heat]))
     # hours_heat_supply_days = [item / 2000 / 2400 for item in hours_high_heat_total]
-    hours_heat_supply_days = [item / 2000 / 2400 for item in hours_high_heat_of_storage.values]
+    hours_heat_supply_days = [item / 2000 / 24 for item in hours_high_heat_of_storage.values]
     data["hours_data"] = {
         "time_data": hours_time_data,
         # "low_heat_total": hours_low_heat_total,
@@ -1868,11 +1885,23 @@ def get_kamba_com_cop(start, end, block="kamba", print_mode=False, log_mode=Fals
     result_df['HHWLoop_HeatLoad'] = (result_df[point_lst[0]] - result_df[point_lst[1]]) * 4.186 * (
             result_df[point_lst[2]] - result_df[point_lst[3]]
     ) / 3.6
+
     tmp_df = result_df.loc[:, [data for data in point_lst[4:]]].sum(axis=1)
-    next_num = tmp_df[0]
-    tmp_df = tmp_df.to_frame(name='SysPower')
-    tmp_df = pd.concat([pd.DataFrame(np.array([next_num]).reshape(1, 1), columns=tmp_df.columns), tmp_df]).diff()[1:]
-    result_df = pd.concat([result_df.loc[:, ["Timestamp", "HHWLoop_HeatLoad"]], tmp_df], axis=1)
+    sys_power = tmp_df.diff()
+    t_start = convert_str_2_datetime(start)
+    t_begin = convert_str_2_datetime(TIME_BEGIN["kamba"])
+
+    if t_start > t_begin:
+        q_start = t_start - timedelta(hours=1)
+        q_end = t_start - timedelta(seconds=1)
+        q_df, q_lst = get_data("COM_COP", q_start, q_end, DB["query"], TB["query"][block]["table"])
+        prev_value = q_df.loc[:, [data for data in q_lst[4:]]].sum(axis=1).iloc[-1]
+        sys_power.iloc[0] = tmp_df.iloc[0] - prev_value
+    else:
+        sys_power.iloc[0] = sys_power.iloc[1]
+
+    result_df = pd.concat([result_df.loc[:, ['Timestamp', 'HHWLoop_HeatLoad']], sys_power.to_frame(name='SysPower')],axis=1)
+
     result_df = result_df.loc[:, ["Timestamp", "HHWLoop_HeatLoad", "SysPower"]]
     hours_df = resample_data_by_hours(
         result_df, "Timestamp",
@@ -1932,12 +1961,25 @@ def get_kamba_wshp_cop(start, end, block="kamba", print_mode=False, log_mode=Fal
             result_df[point_lst[12]] * (result_df[point_lst[13]] - result_df[point_lst[14]]) +
             result_df[point_lst[15]] * (result_df[point_lst[16]] - result_df[point_lst[17]])
     ) / 3.6
+
     tmp_df = result_df.loc[:, [data for data in point_lst[18:]]].sum(axis=1)
-    # TODO 公式为下一行数据减去上一行，未处理首行NNA，暂时用第二行数据替代
-    next_num = tmp_df[0]
-    tmp_df = tmp_df.to_frame(name='WSHP_Power')
-    tmp_df = pd.concat([pd.DataFrame(np.array([next_num]).reshape(1, 1), columns=tmp_df.columns), tmp_df]).diff()[1:]
-    result_df = pd.concat([result_df.loc[:, ['Timestamp', 'WSHP_HeatLoad']], tmp_df], axis=1)
+    wshp_power = tmp_df.diff()
+    t_start = convert_str_2_datetime(start)
+    t_begin = convert_str_2_datetime(TIME_BEGIN["kamba"])
+
+    if t_start > t_begin:
+        q_start = t_start - timedelta(hours=1)
+        q_end = t_start - timedelta(seconds=1)
+        q_df, q_lst = get_data("WSHP_COP", q_start, q_end, DB["query"], TB["query"][block]["table"])
+        prev_value = q_df.loc[:, [data for data in q_lst[18:]]].sum(axis=1).iloc[-1]
+        wshp_power.iloc[0] = tmp_df.iloc[0] - prev_value
+    else:
+        wshp_power.iloc[0] = wshp_power.iloc[1]
+
+    # next_num = tmp_df[0]
+    # tmp_df = tmp_df.to_frame(name='WSHP_Power')
+    # tmp_df = pd.concat([pd.DataFrame(np.array([next_num]).reshape(1, 1), columns=tmp_df.columns), tmp_df]).diff()[1:]
+    result_df = pd.concat([result_df.loc[:, ['Timestamp', 'WSHP_HeatLoad']], wshp_power.to_frame(name='WSHP_Power')], axis=1)
 
     hours_df = resample_data_by_hours(
         result_df, "Timestamp",
@@ -1946,6 +1988,7 @@ def get_kamba_wshp_cop(start, end, block="kamba", print_mode=False, log_mode=Fal
             'WSHP_Power': 'sum'
         }
     )
+
     hours_df["wshp_cop"] = hours_df["WSHP_HeatLoad"] / hours_df["WSHP_Power"]
     hours_df['wshp_cop'][np.isinf(hours_df['wshp_cop'])] = np.nan
 
@@ -1964,11 +2007,13 @@ def get_kamba_wshp_cop(start, end, block="kamba", print_mode=False, log_mode=Fal
     data = {
         "hours_data": {
             "time_data": get_time_in_datetime(hours_df, "h"),
-            "wshp_cop": hours_df["wshp_cop"].values
+            "wshp_cop": hours_df["wshp_cop"].values,
+            "wshp_power_consume": hours_df["WSHP_Power"].values
         },
         "days_data": {
             "time_data": get_time_in_datetime(days_df, "d"),
-            "wshp_cop": days_df["wshp_cop"].values
+            "wshp_cop": days_df["wshp_cop"].values,
+            "wshp_power_consume": days_df["WSHP_Power"].values
         }
     }
     return data
@@ -2005,13 +2050,19 @@ def get_kamba_water_replenishment(start, end, block="kamba", print_mode=False, l
     days_df = resample_data_by_days(
         result_df, "Timestamp",
         True,
-        {},
         {
             "HHWLoop_MUflow": "mean",
             "Pit_MU_flow": "mean",
             "Solar_MUflow": "mean",
             "SolarRFM_0201": "mean",
             "heat_water_replenishment_limit": "mean",
+        },
+        {
+            "HHWLoop_MUflow": "sum",
+            "Pit_MU_flow": "sum",
+            "Solar_MUflow": "sum",
+            "SolarRFM_0201": "sum",
+            "heat_water_replenishment_limit": "sum",
         }
     )
 
@@ -2310,6 +2361,11 @@ def get_kamba_solar_heat_supply(start, end, block="kamba", print_mode=False, log
     )
 
     hours_total_solar_radiation = hours_df["IA"] * 34.992
+    hours_heat_collection_efficiency = hours_df["IB"] / hours_df["IA"]
+
+    hours_solar_collector_heat = hours_df["IB"]
+    hours_heat_supply = hours_df["HHWLoop_HeatLoad"]
+    hours_rate = hours_solar_collector_heat / hours_heat_supply
 
     days_df = resample_data_by_days(
         result_df, "Timestamp", False,
@@ -2340,11 +2396,12 @@ def get_kamba_solar_heat_supply(start, end, block="kamba", print_mode=False, log
     data = {
         "hours_data": {
             "time_data": get_time_in_datetime(hours_df, "h"),
-            # "solar_collector": hours_df["HHWLoop_HeatLoad"].values,
             "solar_collector": hours_df["IB"].values,
             "solar_radiation": hours_df["IA"].values,
             "total_solar_radiation": hours_total_solar_radiation.values,
+            "heat_collection_efficiency": hours_heat_collection_efficiency.values,
             "heat_supply": hours_df["HHWLoop_HeatLoad"].values,
+            "heating_guarantee_rate": hours_rate.values,
             "flow_rate": hours_df["collector_system_flow_rate"].values,
             "heat_collection_system_water_supply_temperature": hours_df[point_lst[6]].values,
             "heat_collection_system_water_return_temperature": hours_df[point_lst[7]].values
@@ -2352,11 +2409,12 @@ def get_kamba_solar_heat_supply(start, end, block="kamba", print_mode=False, log
         "days_data": {
             "time_data": get_time_in_datetime(days_df, "d"),
             "solar_collector": days_solar_collector_heat.values,
-            "heat_supply": days_heat_supply.values,
-            "heating_guarantee_rate": days_rate.values,
-            "heat_collection_efficiency": days_heat_collection_efficiency.values,
             "solar_radiation": days_df["IA"]["sum"].values,
             "total_solar_radiation": days_total_solar_radiation.values,
+            "heat_collection_efficiency": days_heat_collection_efficiency.values,
+            "heat_supply": days_heat_supply.values,
+            "heating_guarantee_rate": days_rate.values,
+
             "flow_rate": days_df["collector_system_flow_rate"]["mean"].values,
             "heat_collection_system_water_supply_temperature": days_df[point_lst[6]]["mean"].values,
             "heat_collection_system_water_return_temperature": days_df[point_lst[7]]["mean"].values
@@ -2377,7 +2435,7 @@ def get_kamba_heat_supply(start, end, block="kamba", print_mode=False, log_mode=
         time_data: 日期
         rate: 供热率
         # heat_supply: 供热量
-        power_consume: 水源热泵耗电量
+        wshp_power_consume: 水源热泵耗电量
     """
     load_df, load_point_lst = get_data("PIPE_NETWORK_HEATING", start, end, DB["query"], TB["query"][block]["table"])
     load_df['HHWLoop_HeatLoad'] = (load_df[load_point_lst[0]] - load_df[load_point_lst[1]]) * 4.186 * (
@@ -2437,13 +2495,13 @@ def get_kamba_heat_supply(start, end, block="kamba", print_mode=False, log_mode=
             "time_data": get_time_in_datetime(hours_load, "h"),
             "heat_supply_rate": hours_rate.replace([np.inf, -np.inf], np.nan).values,
             # "heat_supply": hours_heat_supply,
-            "power_consume": hours_power_consume.values
+            "wshp_power_consume_bk": hours_power_consume.values
         },
         "days_data": {
             "time_data": get_time_in_datetime(days_load, "d"),
             "heat_supply_rate": days_rate.replace([np.inf, -np.inf], np.nan).values,
             # "heat_supply": days_heat_supply,
-            "power_consume": days_power_consume.values
+            "wshp_power_consume_bk": days_power_consume.values
         }
     }
     return data
@@ -2476,28 +2534,31 @@ def get_kamba_cost_saving(start, end, block="kamba", print_mode=False, log_mode=
             result_df[point_lst[18]] - result_df[point_lst[19]] - result_df[point_lst[20]] -
             result_df[point_lst[21]] - result_df[point_lst[22]] - result_df[point_lst[23]]
     ) * (
-                                 (result_df[point_lst[24]] + result_df[point_lst[25]]) / 2 - result_df[point_lst[26]]
-                         ) / 3.6
+            (result_df[point_lst[24]] + result_df[point_lst[25]]) / 2 - result_df[point_lst[26]]
+    ) / 3.6
 
     tmp_df = result_df.loc[:, point_lst[27:]].sum(axis=1)
+    sys_power = tmp_df.diff()
+    t_start = convert_str_2_datetime(start)
+    t_begin = convert_str_2_datetime(TIME_BEGIN["kamba"])
 
-    next_num = tmp_df[0]
-
-    tmp_df = tmp_df.to_frame(name='SysPower')
-    tmp_df = pd.concat(
-        [
-            pd.DataFrame(np.array([next_num]).reshape(1, 1), columns=tmp_df.columns),
-            tmp_df
-        ]
-    ).diff()[1:]
-
+    if t_start > t_begin:
+        q_start = t_start - timedelta(hours=1)
+        q_end = t_start - timedelta(seconds=1)
+        q_df, q_lst = get_data("COST_SAVING", q_start, q_end, DB["query"], TB["query"][block]["table"])
+        prev_value = q_df.loc[:, [data for data in q_lst[27:]]].sum(axis=1).iloc[-1]
+        sys_power.iloc[0] = tmp_df.iloc[0] - prev_value
+    else:
+        sys_power.iloc[0] = sys_power.iloc[1]
     result_df = pd.concat(
         [
             result_df.loc[:, ['Timestamp', 'WSHP_HeatLoad']],
             result_df[['power']],
-            tmp_df
+            sys_power.to_frame(name="SysPower")
         ], axis=1
     )
+    
+    # print(result_df)
 
     hours_df = resample_data_by_hours(
         result_df, "Timestamp",
@@ -2513,7 +2574,11 @@ def get_kamba_cost_saving(start, end, block="kamba", print_mode=False, log_mode=
     days_df = resample_data_by_days(
         result_df, "Timestamp",
         False,
-        {},
+        {
+            'SysPower': 'sum',
+            'WSHP_HeatLoad': 'mean',
+            'power': 'mean'
+        },
         {
             'SysPower': 'sum',
             'WSHP_HeatLoad': 'sum',
@@ -2552,55 +2617,85 @@ def get_kamba_co2_emission(start, end, block="kamba", print_mode=False, log_mode
         co2_emission_reduction: co2减排量  需要计算累加值
         co2_equal_num: 等效种植树木数量
     """
-    result_df, point_lst = get_data("POWER_CONSUME", start, end, DB["query"], TB["query"][block]["table"])
-    result_df = result_df.set_index("Timestamp", drop=True)
+    result_df, point_lst = get_data("COST_SAVING", start, end, DB["query"], TB["query"][block]["table"])
 
-    # 数据填充 针对部分日期数据缺失
-    all_dates = pd.date_range(start, end, freq="15min")
-    result_index = result_df.index
+    result_df['WSHP_HeatLoad'] = 4.186 * (
+            result_df[point_lst[0]] * (result_df[point_lst[1]] - result_df[point_lst[2]]) +
+            result_df[point_lst[3]] * (result_df[point_lst[4]] - result_df[point_lst[5]]) +
+            result_df[point_lst[6]] * (result_df[point_lst[7]] - result_df[point_lst[8]]) +
+            result_df[point_lst[9]] * (result_df[point_lst[10]] - result_df[point_lst[11]]) +
+            result_df[point_lst[12]] * (result_df[point_lst[13]] - result_df[point_lst[14]]) +
+            result_df[point_lst[15]] * (result_df[point_lst[16]] - result_df[point_lst[17]])
+    ) / 3.6
+    result_df['power'] = 4.186 * (
+            result_df[point_lst[18]] - result_df[point_lst[19]] - result_df[point_lst[20]] -
+            result_df[point_lst[21]] - result_df[point_lst[22]] - result_df[point_lst[23]]
+    ) * (
+                                 (result_df[point_lst[24]] + result_df[point_lst[25]]) / 2 - result_df[point_lst[26]]
+                         ) / 3.6
 
-    for _index in all_dates:
-        if _index not in result_index:
-            for item in point_lst:
-                result_df.loc[_index, item] = np.nan
+    tmp_df = result_df.loc[:, point_lst[27:]].sum(axis=1)
+    sys_power = tmp_df.diff()
+    t_start = convert_str_2_datetime(start)
+    t_begin = convert_str_2_datetime(TIME_BEGIN["kamba"])
 
-    result_df.sort_values("Timestamp", inplace=True)
-    result_df["power_consume"] = result_df.loc[:, point_lst].sum(axis=1)
-    result_df = result_df.loc[:, ["power_consume"]]
+    if t_start > t_begin:
+        q_start = t_start - timedelta(hours=1)
+        q_end = t_start - timedelta(seconds=1)
+        q_df, q_lst = get_data("COST_SAVING", q_start, q_end, DB["query"], TB["query"][block]["table"])
+        prev_value = q_df.loc[:, [data for data in q_lst[27:]]].sum(axis=1).iloc[-1]
+        sys_power.iloc[0] = tmp_df.iloc[0] - prev_value
+    else:
+        sys_power.iloc[0] = sys_power.iloc[1]
 
-    hours_consume_items, days_consume_items = collections.OrderedDict(), collections.OrderedDict()
+    result_df = pd.concat(
+        [
+            result_df.loc[:, ['Timestamp', 'WSHP_HeatLoad']],
+            result_df[['power']],
+            sys_power.to_frame(name="SysPower")
+        ], axis=1
+    )
 
-    for hour_index in result_df.index:
-        hours_key = datetime(year=hour_index.year, month=hour_index.month, day=hour_index.day, hour=hour_index.hour)
-        if hours_key not in hours_consume_items:
-            hours_consume_items[hours_key] = [result_df.loc[hour_index, "power_consume"]]
-        else:
-            hours_consume_items[hours_key].append(result_df.loc[hour_index, "power_consume"])
-    hours_power_consume = [item[-1] - item[0] for item in hours_consume_items.values()]
-    hours_co2_emission_reduction = [(item[-1] - item[0]) * 0.5839 for item in hours_consume_items.values()]
-    hours_co2_equal_num = [(item[-1] - item[0]) * 0.5839 / 1.75 for item in hours_consume_items.values()]
+    hours_df = resample_data_by_hours(
+        result_df, "Timestamp",
+        {
+            'SysPower': 'sum',
+            'WSHP_HeatLoad': 'mean',
+            'power': 'mean'
+        }
+    )
 
-    for day_index in result_df.index:
-        days_key = datetime(year=day_index.year, month=day_index.month, day=day_index.day)
-        if days_key not in days_consume_items:
-            days_consume_items[days_key] = [result_df.loc[day_index, "power_consume"]]
-        else:
-            days_consume_items[days_key].append(result_df.loc[day_index, "power_consume"])
-    days_power_consume = [item[-1] - item[0] for item in days_consume_items.values()]
-    days_co2_emission_reduction = [(item[-1] - item[0]) * 0.5839 for item in days_consume_items.values()]
-    days_co2_equal_num = [(item[-1] - item[0]) * 0.5839 / 1.75 for item in days_consume_items.values()]
+    hours_co2_emission_reduction = (hours_df["power"] + hours_df["WSHP_HeatLoad"] - hours_df["SysPower"]) * 0.5839
+    hours_equal_num = hours_co2_emission_reduction / 1.75
+
+    days_df = resample_data_by_days(
+        result_df, "Timestamp",
+        False,
+        {
+            'SysPower': 'sum',
+            'WSHP_HeatLoad': 'mean',
+            'power': 'mean'
+        },
+        {
+            'SysPower': 'sum',
+            'WSHP_HeatLoad': 'sum',
+            'power': 'sum'
+        }
+    )
+
+    days_co2_emission_reduction = (days_df["power"] + days_df["WSHP_HeatLoad"] - days_df["SysPower"]) * 0.5839
+    days_equal_num = days_co2_emission_reduction / 1.75
+
     data = {
         "hours_data": {
-            "time_data": list(hours_consume_items.keys()),
-            "co2_power_consume": hours_power_consume,
-            "co2_emission_reduction": hours_co2_emission_reduction,
-            "co2_equal_num": hours_co2_equal_num
+            "time_data": get_time_in_datetime(hours_df, "h"),
+            "co2_emission_reduction": hours_co2_emission_reduction.values,
+            "co2_equal_num": hours_equal_num.values
         },
         "days_data": {
-            "time_data": list(days_consume_items.keys()),
-            "co2_power_consume": days_power_consume,
-            "co2_emission_reduction": days_co2_emission_reduction,
-            "co2_equal_num": days_co2_equal_num
+            "time_data": get_time_in_datetime(days_df, "d"),
+            "co2_emission_reduction": days_co2_emission_reduction.values,
+            "co2_equal_num": days_equal_num.values
         }
     }
     return data
@@ -2968,3 +3063,16 @@ def get_temperature_and_humidity(start, end, block="tianjin"):
 # ======================================================================================================================
 
 
+if __name__ == '__main__':
+    # print(get_kamba_heat_storage_heat("2022-01-01 00:00:00", "2022-02-01 23:59:59"))
+    # print(get_kamba_co2_emission("2021-10-01 00:00:00", "2021-10-10 23:59:59"))
+    res = get_kamba_cost_saving("2021-01-01 00:00:00", "2021-01-07 23:59:59")
+    print(res)
+    # d = res["days_data"]["cost_saving"]
+    # l = len(d)
+    # count = 0
+    # for item in d:
+    #     if item > 0:
+    #         print("正数", item)
+    #         count += 1
+    # print(f"{count}/{l}")
