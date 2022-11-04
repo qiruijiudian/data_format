@@ -223,7 +223,7 @@ def get_kamba_pool_heat_data(start, end, block="kamba", print_mode=False, log_mo
     result_df["heat_output"] = result_df["WSHP_HeatLoad"] + result_df["power"]
     result_df["heat_input"] = result_df["heat_output"] + result_df["heat_loss"]
     result_df = result_df.loc[:, ["Timestamp", "tower_heat_dissipation", "heat_loss", "heat_output", "heat_input"]]
-    result_df.to_csv("data.csv")
+    # result_df.loc[:, ["Timestamp", "tower_heat_dissipation", "heat_loss"]].to_csv("kamba_pool.csv")
 
     result_df = resample_data_by_days(
         result_df, "Timestamp", just_date=True, hours_op_dic=None, days_op_dic={
@@ -555,23 +555,6 @@ def backup_report_data(block, backup_path, print_mode=False, log_mode=False):
     )
 
 
-# get_kamba_pool_heat_data("2021/05/11", "2021/07/11")
-# data = {}
-# for item in [
-# get_kamba_solar_thermal_data,
-# get_kamba_calories,
-# get_kamba_heat_storage_heat,
-# get_kamba_pool_heat_data,
-# get_kamba_cost_saving,
-# get_kamba_heat_supply,
-# get_kamba_com_cop,
-# get_kamba_co2_emission,
-# store_report_data,
-# backup_report_data
-# ]:
-#     data.update(item("2021/10/01 00:00:00", "2021/10/30 23:59:59"))
-#     print()
+# store_report_data("2020/08/17 00:00:00", "2022/10/31 23:59:59", "kamba", True, False)
+# get_kamba_pool_heat_data("2020/08/17 00:00:00", "2022/10/30 23:59:59")
 
-
-# store_report_data("2021/10/01 00:00:00", "2021/10/03 23:59:59", "kamba")
-# get_kamba_co2_emission("2021/10/01 00:00:00", "2021/10/03 23:59:59")

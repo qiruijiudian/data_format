@@ -467,4 +467,4 @@ class DataCalc:
 
 
 # DataCalc("kamba", True, False).update_customization_data("2021/10/01 00:00:00", "2021/10/30 23:59:59")
-DataCalc("kamba", True, False).update_history_data()
+# DataCalc("kamba", True, False).update_history_data()
