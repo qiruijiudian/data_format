@@ -476,29 +476,30 @@ def get_kamba_co2_emission(start, end, block="kamba", print_mode=False, log_mode
 
 def store_report_data(start, end, block, print_mode=False, log_mode=False):
     res = {}
-    if block == "kamba":
-        for _func in [
-            get_kamba_solar_thermal_data, get_kamba_calories, get_kamba_heat_storage_heat, get_kamba_pool_heat_data,
-            get_kamba_cost_saving, get_kamba_heat_supply, get_kamba_com_cop, get_kamba_co2_emission
-        ]:
-            res.update(_func(start, end, block, print_mode=print_mode, log_mode=log_mode))
-    df = pd.DataFrame(res)
-    df = df.replace([np.inf, -np.inf], np.nan)
-    store_conn = get_custom_conn(get_sql_conf(REPORT_DB["store"]))
-    backup_conn = get_custom_conn(get_sql_conf(REPORT_DB["backup"]))
-    try:
-        store_df = df.melt(id_vars="time_data", var_name="pointname")
-        log_or_print_without_obj("报表数据(长格式存储) 开始上传", print_mode, log_mode)
-        store_df.to_sql(name=block, con=store_conn, if_exists="append", index=False, dtype=get_dtype(store_df.keys()))
-        log_or_print_without_obj("报表数据(长格式存储) 存储完成", print_mode, log_mode)
+    if block in ["kamba"]:
+        if block == "kamba":
+            for _func in [
+                get_kamba_solar_thermal_data, get_kamba_calories, get_kamba_heat_storage_heat, get_kamba_pool_heat_data,
+                get_kamba_cost_saving, get_kamba_heat_supply, get_kamba_com_cop, get_kamba_co2_emission
+            ]:
+                res.update(_func(start, end, block, print_mode=print_mode, log_mode=log_mode))
+        df = pd.DataFrame(res)
+        df = df.replace([np.inf, -np.inf], np.nan)
+        store_conn = get_custom_conn(get_sql_conf(REPORT_DB["store"]))
+        backup_conn = get_custom_conn(get_sql_conf(REPORT_DB["backup"]))
+        try:
+            store_df = df.melt(id_vars="time_data", var_name="pointname")
+            log_or_print_without_obj("报表数据(长格式存储) 开始上传", print_mode, log_mode)
+            store_df.to_sql(name=block, con=store_conn, if_exists="append", index=False, dtype=get_dtype(store_df.keys()))
+            log_or_print_without_obj("报表数据(长格式存储) 存储完成", print_mode, log_mode)
 
-        log_or_print_without_obj("报表数据(宽格式存储) 开始上传", print_mode, log_mode)
-        df.to_sql(name=block, con=backup_conn, if_exists="append", index=False, dtype=get_dtype(df.keys()))
-        log_or_print_without_obj("报表数据(宽格式存储) 存储完成", print_mode, log_mode)
+            log_or_print_without_obj("报表数据(宽格式存储) 开始上传", print_mode, log_mode)
+            df.to_sql(name=block, con=backup_conn, if_exists="append", index=False, dtype=get_dtype(df.keys()))
+            log_or_print_without_obj("报表数据(宽格式存储) 存储完成", print_mode, log_mode)
 
-    finally:
-        store_conn.dispose()
-        backup_conn.dispose()
+        finally:
+            store_conn.dispose()
+            backup_conn.dispose()
 
 
 def backup_report_data(block, backup_path, print_mode=False, log_mode=False):
@@ -553,8 +554,4 @@ def backup_report_data(block, backup_path, print_mode=False, log_mode=False):
             report_wide_name, datetime.today().strftime("%Y-%m-%d %H:%M:%S")
         ), print_mode, log_mode
     )
-
-
-# store_report_data("2020/08/17 00:00:00", "2022/10/31 23:59:59", "kamba", True, False)
-# get_kamba_pool_heat_data("2020/08/17 00:00:00", "2022/10/30 23:59:59")
 
