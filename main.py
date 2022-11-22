@@ -396,8 +396,9 @@ class DataFormat:
 
                     dc.backup_statistics_data(self.statistics_backup)   # 计算值备份
                     dc.backup_statistics_wide_data(self.statistics_backup)   # 计算值(宽表)备份
-                    dc.backup_report_data(self.report_backup)
-
+                    # TODO 暂时只有kamba计算报表数据
+                    if self.table_name in ["kamba"]:
+                        dc.backup_report_data(self.report_backup)
                     self.clear_backup()  # 清除备份
                     self.file_clear()   # 清除数据文件
             else:
