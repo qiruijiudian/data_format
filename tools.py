@@ -456,6 +456,14 @@ def log_hint(func):
     return wrapper
 
 
+def is_table_exists(cur, table_name):
+    sql = "show tables"
+    cur.execute(sql)
+    tables = cur.fetchall()
+
+    print(tables)
+
+    return True
 # TODO 待修改
 def get_data_range(key):
     """根据key获取时间范围
@@ -466,6 +474,7 @@ def get_data_range(key):
     """
     sql_conf = get_sql_conf(DB["query"])
     res = {}
+
     with pymysql.connect(
             host=sql_conf["host"],
             user=sql_conf["user"],
@@ -473,6 +482,10 @@ def get_data_range(key):
             database=sql_conf["database"]
     ) as conn1:
         cur1 = conn1.cursor()
+        print("*" * 100)
+
+        is_table_exists(cur1, "")
+        print("*" * 100)
 
         context = {"cona": "time", "kamba": "Timestamp", "tianjin": "date"}
         for k, v in context.items():
@@ -485,6 +498,7 @@ def get_data_range(key):
 
             res[k] = {"start": start, "end": end}
         cur1.close()
+
     if key == "history":
         return res
 
@@ -505,6 +519,7 @@ def get_data_range(key):
             res[k]["latest"] = item
         cur2.close()
     return res
+
 
 
 # TODO 待修改

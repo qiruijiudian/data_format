@@ -148,6 +148,7 @@ class DataFormat:
             df = df.melt(id_vars=self.id_var, var_name=self.var_name)
             if df["value"].dtype == "object":
                 df["value"].replace("\s*\[u\.\]\s*", "", regex=True, inplace=True)
+                df["value"].replace("\s*\[m\.\]\s*", "", regex=True, inplace=True)
                 # df["value"].replace([np.inf, -np.inf], np.nan, inplace=True)
                 df["value"] = df["value"].astype("float64")
             return df
@@ -392,13 +393,15 @@ class DataFormat:
                     self.original_table_backup()  # 备份
 
                     dc = DataCalc(self.table_name, self.print_mode, self.log_mode)
-                    dc.update_realtime_data()   # 实时数据（公式计算）
+                    success = dc.update_realtime_data()   # 实时数据（公式计算）
 
-                    dc.backup_statistics_data(self.statistics_backup)   # 计算值备份
-                    dc.backup_statistics_wide_data(self.statistics_backup)   # 计算值(宽表)备份
-                    # TODO 暂时只有kamba计算报表数据
-                    if self.table_name in ["kamba"]:
-                        dc.backup_report_data(self.report_backup)
+                    if success:
+
+                        dc.backup_statistics_data(self.statistics_backup)   # 计算值备份
+                        dc.backup_statistics_wide_data(self.statistics_backup)   # 计算值(宽表)备份
+                        # TODO 暂时只有kamba计算报表数据
+                        if self.table_name in ["kamba"]:
+                            dc.backup_report_data(self.report_backup)
                     self.clear_backup()  # 清除备份
                     self.file_clear()   # 清除数据文件
             else:
@@ -409,6 +412,8 @@ class DataFormat:
                         datetime.today().strftime("%Y-%m-%d %H:%M:%S")
                     )
                 )
+
+
 
         except Exception as e:
             log_or_print(self, "数据解析异常，错误原因：{}, 当前时间：{}".format(e, datetime.today().strftime("%Y-%m-%d %H:%M:%S")))
@@ -424,7 +429,6 @@ class DataFormat:
             )
 
             engine.dispose()
-
 
 if __name__ == '__main__':
     print("*"*113)

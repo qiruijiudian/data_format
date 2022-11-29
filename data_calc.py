@@ -33,6 +33,54 @@ class DataCalc:
         self.print_mode = print_mode
         self.log_mode = log_mode
 
+    def is_table_exists(self):
+        res = {}
+        sql_conf = get_sql_conf(DB["query"])
+        with pymysql.connect(
+                host=sql_conf["host"],
+                user=sql_conf["user"],
+                password=sql_conf["password"],
+                database=sql_conf["database"]
+        ) as conn1:
+            context = {k: v["time_index"] for k, v in TB["query"].items() if k == self.block}
+            cur1 = conn1.cursor()
+            cur1.execute("show tables")
+            query_tables = cur1.fetchall()
+            if query_tables:
+                query_tables = [item[0] for item in query_tables]
+            else:
+                query_tables = []
+            cur1.close()
+            if self.block in query_tables:
+                res["original"] = True
+            else:
+                res["original"] = False
+
+        sql_conf2 = get_sql_conf(DB["store"])
+
+        with pymysql.connect(
+                host=sql_conf2["host"],
+                user=sql_conf2["user"],
+                password=sql_conf2["password"],
+                database=sql_conf2["database"]
+        ) as conn2:
+            cur2 = conn2.cursor()
+            cur2.execute("show tables")
+            query_tables = cur2.fetchall()
+            cur2.close()
+            query_name = {"tianjin": "tianjin_commons_data", "cona": "cona_hours_data", "kamba": "kamba_hours_data"}
+            if query_tables:
+                query_tables = [item[0] for item in query_tables]
+            else:
+                query_tables = []
+
+            if query_name[self.block] in query_tables:
+                res["statistics"] = True
+            else:
+                res["statistics"] = False
+
+        return res
+
     def get_data_range(self, key):
         sql_conf = get_sql_conf(DB["query"])
         res = {}
@@ -44,6 +92,7 @@ class DataCalc:
         ) as conn1:
             cur1 = conn1.cursor()
             context = {k: v["time_index"] for k, v in TB["query"].items() if k == self.block}
+
             for k, v in context.items():
                 cur1.execute(
                     "select {} from {} order by {} asc limit 1".format(
@@ -308,19 +357,30 @@ class DataCalc:
     def update_realtime_data(self):
         # 更新实时数据
 
-        data_range = get_data_range("realtime")
-        latest_time = data_range[self.block]["latest"] + timedelta(days=1)
-        start = "{} 00:00:00".format(latest_time.strftime("%Y-%m-%d"))
-        end = "{} 23:59:59".format(data_range[self.block]["end"].strftime("%Y-%m-%d"))
+        tables_status = self.is_table_exists()
+        if tables_status["original"] and tables_status["statistics"]:
+            data_range = get_data_range("realtime")
+            latest_time = data_range[self.block]["latest"] + timedelta(days=1)
+            start = "{} 00:00:00".format(latest_time.strftime("%Y-%m-%d"))
+            end = "{} 23:59:59".format(data_range[self.block]["end"].strftime("%Y-%m-%d"))
 
-        items = self.data_collation(start, end)
-        # 宽表备份
-        self.store_data(items, True)
+            items = self.data_collation(start, end)
+            # 宽表备份
+            self.store_data(items, True)
 
-        self.store_data(items, False)
+            self.store_data(items, False)
 
-        # 数据报表数据
-        store_report_data(start, end, self.block, self.print_mode, self.log_mode)
+            # 数据报表数据
+            store_report_data(start, end, self.block, self.print_mode, self.log_mode)
+            return True
+
+        else:
+            if tables_status["original"]:
+                self.update_history_data()
+                return True
+
+            else:
+                return False
 
     def backup_statistics_data(self, backup_path):
         if not os.path.exists(backup_path):
@@ -464,7 +524,3 @@ class DataCalc:
                 report_wide_name, datetime.today().strftime("%Y-%m-%d %H:%M:%S")
             ), self.print_mode, self.log_mode
         )
-
-
-# DataCalc("kamba", True, False).update_customization_data("2021/10/01 00:00:00", "2021/10/30 23:59:59")
-# DataCalc("kamba", True, False).update_history_data()
