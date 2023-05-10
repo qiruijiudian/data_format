@@ -29,8 +29,18 @@
 ~~~
 1. 安装依赖库
 pip install -r requirements.txt
+注意，默认的参数是linux系统的，在windows平台需要将其中的pandas和numpy改为如下设置
+pandas~=1.4.2
+numpy~=1.23.4
 
-2. 执行主函数
+2.如果不存在/data_format/data/data/kamba目录, 请手动创建该文件夹，这个路径是程序对kamba原始宽表数据.csv文件的读取目录
+
+3.将需要更新的数据文件(一般是.csv格式)放入/data_format/data/data/kamba目录,执行成功后该目录下文件.csv会删除，所以请在别的位置保留好数据备份。
+
+4. 执行主函数
+加上history参数，更新历史数据(csv导入)：
+python main.py history
+更新实时数据使用
 python main.py
 ~~~
 
@@ -48,16 +58,16 @@ python main.py
 - data_center_statistical：公式计算值数据（长表格式）
 - data_center_user：用户数据库，保存用户账号信息
 - data_center_statistical_wide：宽表格式备份数据库
-
+- data_report: 岗巴地区报表数据库
 
 
 ### 5. 函数详情
 
 #### 5.1 概述
 
-`main.py`文件内函数(`DataFormat`)主要负责将表格数据解析并存储，`data_calc.py`文件内函数(`DataCalc`)负责公式值计算以及备份操作
-
-
+`main.py`文件内函数(`DataFormat`)主要负责将表格数据解析并存储，`data_calc.py`文件内函数(`DataCalc`)负责公式值计算以及备份操作，
+`tools.py`文件主要放一些公用工具函数比如日志打印函数，时间列的检查函数等。`settings.py`主要是一些配置项，例如数据参数定义，数据库配置定义等。
+`data_report.py`文件主要用以上传存储一些特殊的报表数据（如岗巴的供热分析），所交互的数据库为`data_report`, 目前仅岗巴地区启用。
 
 #### 5.2 主要涉及函数
 
